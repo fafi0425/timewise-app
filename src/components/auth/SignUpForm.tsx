@@ -3,51 +3,66 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, Eye, EyeOff, LoaderCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Mail, Lock, Eye, EyeOff, LoaderCircle, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
+import { addUser } from '@/lib/auth';
+import { useAuth } from '@/hooks/useAuth';
 
-export default function LoginForm() {
+export default function SignUpForm() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!email || !password) {
+    if (!name || !email || !password) {
       toast({
         title: 'Error',
-        description: 'Please enter both email and password.',
+        description: 'Please fill all fields.',
         variant: 'destructive',
       });
       setLoading(false);
       return;
     }
+    
+    // Default role and department for self-registered users
+    const newUser = await addUser({
+        name,
+        email,
+        password,
+        department: 'CS/KYC', 
+        role: 'Employee'
+    });
 
-    const user = await login(email, password);
-
-    if (user) {
+    if (newUser) {
       toast({
-        title: 'Login Successful',
-        description: `Welcome back, ${user.name}!`,
+        title: 'Registration Successful',
+        description: 'Your account has been created.',
       });
-      router.push(user.role === 'Administrator' ? '/admin' : '/dashboard');
+      
+      // Automatically log the user in
+      const loggedInUser = await login(email, password);
+      if(loggedInUser) {
+        router.push('/dashboard');
+      } else {
+        router.push('/login');
+      }
+
     } else {
       toast({
-        title: 'Login Failed',
-        description: 'Invalid email or password. Please try again.',
+        title: 'Registration Failed',
+        description: 'An account with this email may already exist.',
         variant: 'destructive',
       });
     }
@@ -57,6 +72,24 @@ export default function LoginForm() {
   return (
     <div className="rounded-3xl bg-card/95 p-8 backdrop-blur-sm card-shadow">
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <Label htmlFor="name" className="mb-2 block text-sm font-semibold text-card-foreground">
+            Full Name
+          </Label>
+          <div className="relative">
+            <UserIcon className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+            <Input
+              type="text"
+              id="name"
+              name="name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="pl-12 pr-4 py-6 text-base"
+              placeholder="Enter your full name"
+            />
+          </div>
+        </div>
         <div>
           <Label htmlFor="email" className="mb-2 block text-sm font-semibold text-card-foreground">
             Email Address
@@ -93,7 +126,7 @@ export default function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-12 pr-12 py-6 text-base"
-              placeholder="Enter your password"
+              placeholder="Create a password"
             />
             <Button
               type="button"
@@ -107,18 +140,6 @@ export default function LoginForm() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Checkbox id="remember" />
-            <Label htmlFor="remember" className="ml-2 text-sm text-card-foreground">
-              Remember me
-            </Label>
-          </div>
-          <a href="#" className="text-sm font-medium text-primary hover:underline">
-            Forgot password?
-          </a>
-        </div>
-
         <Button
           type="submit"
           className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white font-bold py-6 rounded-xl transition-all duration-300 transform hover:scale-105 text-base"
@@ -127,15 +148,15 @@ export default function LoginForm() {
           {loading ? (
             <LoaderCircle className="animate-spin" />
           ) : (
-            'Sign In'
+            'Create Account'
           )}
         </Button>
       </form>
       <div className="mt-8 text-center">
         <p className="text-card-foreground/80">
-          Don&apos;t have an account?{' '}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            Sign up
+          Already have an account?{' '}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Sign In
           </Link>
         </p>
       </div>
