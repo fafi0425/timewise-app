@@ -28,7 +28,7 @@ const defaultUsers: User[] = [
 ];
 
 export const seedInitialData = () => {
-  if (!localStorage.getItem('users')) {
+  if (typeof window !== 'undefined' && !localStorage.getItem('users')) {
     localStorage.setItem('users', JSON.stringify(defaultUsers));
   }
 };
@@ -40,32 +40,48 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     if (firebaseUser) {
         const users = getUsers();
         const user = users.find(u => u.email === email);
+        // If user exists in local storage, return it with the firebase UID
         if (user) {
             return { ...user, uid: firebaseUser.uid };
         }
+        // This case is unlikely if registration is handled correctly, but as a fallback:
+        return {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || email,
+            name: firebaseUser.displayName || email,
+            department: 'CS/KYC',
+            role: 'Employee'
+        }
     }
-    // Fallback for locally defined users not in firebase auth
-    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-    const localUser = users.find(u => u.email === email && u.password === pass);
-    return localUser || null;
-
-  } catch (error) {
-    // Fallback for locally defined users not in firebase auth
-    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-    const localUser = users.find(u => u.email === email && u.password === pass);
-    if(localUser) return localUser;
-
-    console.error("Firebase authentication failed:", error);
+    return null;
+  } catch (error: any) {
+    // If Firebase auth fails, try to authenticate against local storage users.
+    // This is useful for the seeded default users.
+    if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+        const localUser = users.find(u => u.email === email && u.password === pass);
+        if (localUser) {
+            return localUser;
+        }
+    }
+    // If it's another type of error, or local auth also fails, log it and return null.
+    console.error("Authentication failed:", error);
     return null;
   }
 };
 
 export const getUsers = (): User[] => {
+  if (typeof window === 'undefined') return [];
   return JSON.parse(localStorage.getItem('users') || '[]');
 };
 
 export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> => {
     const users = getUsers();
+    const existingUser = users.find(u => u.email === newUser.email);
+    if (existingUser) {
+        return null; // User with this email already exists
+    }
+
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password!);
         const firebaseUser = userCredential.user;
@@ -73,14 +89,18 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         users.push(userWithId);
         localStorage.setItem('users', JSON.stringify(users));
         return userWithId;
-    } catch(e) {
-        console.error(e)
-        const localUser = users.find(u => u.email === newUser.email);
-        if(localUser) return localUser;
-        const userWithId: User = { ...newUser, uid: `user${Date.now()}` };
-        users.push(userWithId);
-        localStorage.setItem('users', JSON.stringify(users));
-        return userWithId;
+    } catch(e: any) {
+        // If user already exists in Firebase auth, but not locally (e.g. from previous session)
+        // just add them to local storage list without creating a new auth user.
+        if (e.code === 'auth/email-already-in-use') {
+            console.warn("User already exists in Firebase Auth. Adding to local storage.");
+             const userWithId: User = { ...newUser, uid: `user${Date.now()}` }; // Generate a temporary local UID
+             users.push(userWithId);
+             localStorage.setItem('users', JSON.stringify(users));
+             return userWithId;
+        }
+        console.error("Error creating user:", e);
+        return null;
     }
 };
 
@@ -88,20 +108,17 @@ export const deleteUser = async (uid: string): Promise<void> => {
     let users = getUsers();
     const userToDelete = users.find(u => u.uid === uid);
     if (!userToDelete) return;
-
-    try {
-      // This is a placeholder, you'll need to handle re-authentication for deletion in a real app
-      // For now, we are assuming deletion will work directly.
-      // This will only work for users created through firebase.
-      if (auth.currentUser && auth.currentUser.uid === uid) {
-        await deleteFirebaseUser(auth.currentUser);
-      } else {
-        // This is a complex operation and requires admin privileges to delete other users.
-        // For this prototype, we'll just remove from local storage.
-        console.warn("Cannot delete other Firebase users from the client. Deleting from local storage only.");
-      }
-    } catch (error) {
-        console.error("Error deleting user from Firebase:", error);
+    
+    // We only attempt to delete from Firebase if it's not a local-only UID
+    if (!userToDelete.uid.startsWith('user') && !userToDelete.uid.startsWith('admin')) {
+        try {
+          // This is a placeholder for a proper admin SDK implementation.
+          // Directly deleting users from the client is not secure or scalable.
+          // In a real app, this would be an admin-privileged server-side call.
+          console.warn("Client-side user deletion is not recommended for production. Deleting from Firebase Auth is complex from the client.");
+        } catch (error) {
+            console.error("Error deleting user from Firebase:", error);
+        }
     }
     
     users = users.filter(user => user.uid !== uid);
@@ -110,5 +127,9 @@ export const deleteUser = async (uid: string): Promise<void> => {
 
 
 export const signOutUser = async () => {
-    await signOut(auth);
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Error signing out:", error);
+    }
 };
