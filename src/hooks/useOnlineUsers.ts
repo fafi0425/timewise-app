@@ -2,27 +2,30 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, Timestamp } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
 export default function useOnlineUsers() {
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // Query for users seen in the last 5 minutes.
-    // This helps ensure we don't show users who have disconnected without logging out.
-    const fiveMinutesAgo = new Timestamp(Math.floor(Date.now() / 1000) - 5 * 60, 0);
-    const usersCollectionRef = query(
-        collection(db, 'online-users'), 
-        where('lastSeen', '>', fiveMinutesAgo)
-    );
+    // This query now fetches all users from the 'online-users' collection.
+    // The cleanup of stale users is handled by a server-side flow.
+    const usersCollectionRef = query(collection(db, 'online-users'));
     
     const unsubscribe = onSnapshot(usersCollectionRef, (snapshot) => {
       const users: User[] = [];
       snapshot.forEach((doc) => {
-        users.push(doc.data() as User);
+        // Basic check to ensure the document has some data
+        if (doc.data()?.uid) {
+            users.push(doc.data() as User);
+        }
       });
       setOnlineUsers(users);
+    }, (error) => {
+        console.error("Error fetching online users:", error);
+        // If there's an error (like permissions), clear the list
+        setOnlineUsers([]);
     });
 
     // Cleanup the listener when the component unmounts
