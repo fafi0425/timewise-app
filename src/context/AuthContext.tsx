@@ -5,8 +5,6 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
 import { authenticateUser, seedInitialData, signOutUser } from '@/lib/auth';
-import { db } from '@/lib/firebase';
-import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -23,29 +21,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-
-  const handleUserOnline = useCallback(async (user: User) => {
-    try {
-      const userStatusRef = doc(db, 'online-users', user.uid);
-      // Use setDoc with merge to create or update the document without overwriting
-      await setDoc(userStatusRef, {
-          ...user,
-          lastSeen: serverTimestamp(),
-      }, { merge: true });
-    } catch (error) {
-      console.error("Failed to set user as online:", error);
-    }
-  }, []);
-
-  const handleUserOffline = useCallback(async (user: User | null) => {
-      if(!user) return;
-      try {
-        const userStatusRef = doc(db, 'online-users', user.uid);
-        await deleteDoc(userStatusRef);
-      } catch(error) {
-        console.error("Failed to set user as offline:", error);
-      }
-  }, []);
   
   useEffect(() => {
     seedInitialData();
@@ -54,44 +29,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedUser) {
       const activeUser = JSON.parse(storedUser);
       setUser(activeUser);
-      handleUserOnline(activeUser);
     }
     setLoading(false);
 
-    const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
-        const storedUser = localStorage.getItem('currentUser');
-        if (storedUser) {
-            await handleUserOffline(JSON.parse(storedUser));
-        }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        // Ensure user is marked offline when component unmounts (e.g. tab close)
-        if(user) {
-            handleUserOffline(user);
-        }
-    }
-
-  }, []); // Removed dependencies to avoid re-running on user state change within this effect
-
-  // Heartbeat to update lastSeen timestamp
-  useEffect(() => {
-      if (!user) return;
-
-      const interval = setInterval(() => {
-        try {
-          const userStatusRef = doc(db, 'online-users', user.uid);
-          setDoc(userStatusRef, { lastSeen: serverTimestamp() }, { merge: true });
-        } catch (error) {
-            console.error("Failed to update heartbeat:", error);
-        }
-      }, 60000); // Update every minute
-
-      return () => clearInterval(interval);
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -111,7 +52,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (authenticatedUser) {
       localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
       setUser(authenticatedUser);
-      await handleUserOnline(authenticatedUser);
       setLoading(false);
       return authenticatedUser;
     }
@@ -120,11 +60,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await handleUserOffline(user);
-    await signOutUser();
-    localStorage.removeItem('currentUser');
-    setUser(null);
-    router.push('/login');
+    try {
+        await signOutUser();
+    } catch (error) {
+        console.error("Error during sign out:", error);
+    } finally {
+        localStorage.removeItem('currentUser');
+        setUser(null);
+        router.push('/login');
+    }
   };
 
   return (

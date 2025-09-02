@@ -14,8 +14,6 @@ import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTrian
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import OnlineUsersList from '@/components/shared/OnlineUsersList';
-
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -253,10 +251,6 @@ export default function AdminPage() {
                 </Card>
             </div>
             
-            <div className="mt-8">
-                <OnlineUsersList />
-            </div>
-
         </main>
     </AuthCheck>
     );
