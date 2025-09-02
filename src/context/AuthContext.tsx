@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -27,10 +27,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const handleUserOnline = useCallback(async (user: User) => {
     try {
       const userStatusRef = doc(db, 'online-users', user.uid);
+      // Use setDoc with merge to create or update the document without overwriting
       await setDoc(userStatusRef, {
           ...user,
           lastSeen: serverTimestamp(),
-      });
+      }, { merge: true });
     } catch (error) {
       console.error("Failed to set user as online:", error);
     }
