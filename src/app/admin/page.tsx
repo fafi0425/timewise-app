@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers, addUser } from '@/lib/auth';
+import { getUsers, addUser, deleteUser } from '@/lib/auth';
 import { getOverbreakAlertsAction } from '@/lib/actions';
 import type { User, ActivityLog } from '@/lib/types';
-import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle } from 'lucide-react';
+import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2 } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -101,6 +101,13 @@ export default function AdminPage() {
         refreshData();
     };
 
+    const handleDeleteUser = (uid: string) => {
+        deleteUser(uid);
+        toast({ title: "Success", description: "User removed successfully." });
+        refreshData();
+    };
+
+
     return (
     <AuthCheck adminOnly>
         <AppHeader isAdmin />
@@ -188,6 +195,9 @@ export default function AdminPage() {
                                             <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs ml-1">{user.role}</span>
                                         </div>
                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
                                </div>
                            ))}
                         </div>

@@ -42,3 +42,9 @@ export const addUser = (newUser: Omit<User, 'uid'>): User => {
     localStorage.setItem('users', JSON.stringify(users));
     return userWithId;
 };
+
+export const deleteUser = (uid: string): void => {
+    let users = getUsers();
+    users = users.filter(user => user.uid !== uid);
+    localStorage.setItem('users', JSON.stringify(users));
+};
