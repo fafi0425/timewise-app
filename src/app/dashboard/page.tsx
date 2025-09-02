@@ -14,6 +14,7 @@ import TeamOverbreakAlerts from '@/components/dashboard/TeamOverbreakAlerts';
 import StatisticsModal from '@/components/dashboard/StatisticsModal';
 import { Button } from '@/components/ui/button';
 import { BarChart2 } from 'lucide-react';
+import OnlineUsersList from '@/components/shared/OnlineUsersList';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -69,6 +70,7 @@ export default function DashboardPage() {
             <StatusCard status={status} countdown={countdown} />
             <SummaryCard summary={summary} />
             <OnBreakList />
+            <OnlineUsersList />
           </div>
         </div>
 

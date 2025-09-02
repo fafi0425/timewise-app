@@ -14,6 +14,8 @@ import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTrian
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import OnlineUsersList from '@/components/shared/OnlineUsersList';
+
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -46,7 +48,7 @@ export default function AdminPage() {
 
     const { toast } = useToast();
 
-    const refreshData = () => {
+    const refreshData = async () => {
         const allUsers = getUsers();
         setUsers(allUsers);
 
@@ -63,7 +65,7 @@ export default function AdminPage() {
             todayLunches: todayActivities.filter(a => a.action === 'Lunch Out').length,
         });
 
-        fetchOverbreaks();
+        await fetchOverbreaks();
     };
 
     const fetchOverbreaks = async () => {
@@ -100,7 +102,7 @@ export default function AdminPage() {
             setNewUserDepartment('');
             setNewUserRole('');
             setNewUserPassword('');
-            refreshData();
+            await refreshData();
         } else {
             toast({ title: "Error", description: "Could not add user.", variant: "destructive" });
         }
@@ -109,7 +111,7 @@ export default function AdminPage() {
     const handleDeleteUser = async (uid: string) => {
         await deleteUser(uid);
         toast({ title: "Success", description: "User removed successfully." });
-        refreshData();
+        await refreshData();
     };
 
 
@@ -249,6 +251,10 @@ export default function AdminPage() {
                         </div>
                     </ScrollArea>
                 </Card>
+            </div>
+            
+            <div className="mt-8">
+                <OnlineUsersList />
             </div>
 
         </main>
