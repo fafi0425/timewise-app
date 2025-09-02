@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
-import { authenticateUser, seedInitialData } from '@/lib/auth';
+import { authenticateUser, seedInitialData, signOutUser } from '@/lib/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -44,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, pass: string): Promise<User | null> => {
     setLoading(true);
-    const authenticatedUser = authenticateUser(email, pass);
+    const authenticatedUser = await authenticateUser(email, pass);
     if (authenticatedUser) {
       localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
       setUser(authenticatedUser);
@@ -55,7 +56,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOutUser();
     localStorage.removeItem('currentUser');
     setUser(null);
     router.push('/login');

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,32 +78,36 @@ export default function AdminPage() {
         refreshData();
     }, []);
 
-    const handleAddUser = (e: React.FormEvent) => {
+    const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newUserName || !newUserEmail || !newUserDepartment || !newUserRole || !newUserPassword) {
             toast({ title: "Error", description: "Please fill all fields.", variant: "destructive" });
             return;
         }
         
-        addUser({
+        const newUser = await addUser({
             name: newUserName,
             email: newUserEmail,
             department: newUserDepartment,
             role: newUserRole as any,
             password: newUserPassword,
         });
-        
-        toast({ title: "Success", description: "User added successfully." });
-        setNewUserName('');
-        setNewUserEmail('');
-        setNewUserDepartment('');
-        setNewUserRole('');
-        setNewUserPassword('');
-        refreshData();
+
+        if (newUser) {
+            toast({ title: "Success", description: "User added successfully." });
+            setNewUserName('');
+            setNewUserEmail('');
+            setNewUserDepartment('');
+            setNewUserRole('');
+            setNewUserPassword('');
+            refreshData();
+        } else {
+            toast({ title: "Error", description: "Could not add user.", variant: "destructive" });
+        }
     };
 
-    const handleDeleteUser = (uid: string) => {
-        deleteUser(uid);
+    const handleDeleteUser = async (uid: string) => {
+        await deleteUser(uid);
         toast({ title: "Success", description: "User removed successfully." });
         refreshData();
     };
