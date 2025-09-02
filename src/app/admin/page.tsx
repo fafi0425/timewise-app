@@ -232,8 +232,8 @@ export default function AdminPage() {
                     <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
                      <ScrollArea className="h-80 pr-4">
                         <div className="space-y-3">
-                            {allActivity.slice(-20).reverse().map(a => (
-                               <div key={a.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                            {allActivity.slice(-20).reverse().map((a, index) => (
+                               <div key={`${a.id}-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                                    <div>
                                        <p className="font-medium text-card-foreground">{a.employeeName} <span className="text-sm text-muted-foreground">{a.action}</span></p>
                                         <p className="text-xs text-muted-foreground">{a.date} {a.time}</p>
