@@ -28,8 +28,8 @@ export default function ActivityLog({ log }: { log: ActivityLogType[] }) {
       <ScrollArea className="h-64">
         <div className="space-y-4">
           {log.length > 0 ? (
-            log.slice().reverse().map((item) => (
-              <div key={item.id} className="flex items-center">
+            log.slice().reverse().map((item, index) => (
+              <div key={`${item.id}-${index}`} className="flex items-center">
                 <div className="flex-1">
                   <p className="text-sm font-medium leading-none">
                     {item.action}
