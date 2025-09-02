@@ -5,6 +5,8 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
 import { authenticateUser, seedInitialData, signOutUser } from '@/lib/auth';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -15,15 +17,6 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-const getOnlineUsers = (): User[] => {
-    if (typeof window === 'undefined') return [];
-    return JSON.parse(localStorage.getItem('onlineUsers') || '[]');
-}
-
-const setOnlineUsers = (users: User[]) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('onlineUsers', JSON.stringify(users));
-}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -31,19 +24,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleUserOnline = useCallback((user: User) => {
-    const onlineUsers = getOnlineUsers();
-    if (!onlineUsers.find(u => u.uid === user.uid)) {
-        setOnlineUsers([...onlineUsers, user]);
-    }
+  const handleUserOnline = useCallback(async (user: User) => {
+    const userStatusRef = doc(db, 'online-users', user.uid);
+    await setDoc(userStatusRef, {
+        ...user,
+        lastSeen: serverTimestamp(),
+    });
   }, []);
 
-  const handleUserOffline = useCallback((user: User | null) => {
+  const handleUserOffline = useCallback(async (user: User | null) => {
       if(!user) return;
-      const onlineUsers = getOnlineUsers();
-      setOnlineUsers(onlineUsers.filter(u => u.uid !== user.uid));
+      const userStatusRef = doc(db, 'online-users', user.uid);
+      await deleteDoc(userStatusRef);
   }, []);
-
+  
   useEffect(() => {
     seedInitialData();
 
@@ -55,10 +49,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     setLoading(false);
 
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = async () => {
         const storedUser = localStorage.getItem('currentUser');
         if (storedUser) {
-            handleUserOffline(JSON.parse(storedUser));
+            await handleUserOffline(JSON.parse(storedUser));
         }
     };
 
@@ -69,6 +63,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
   }, [handleUserOnline, handleUserOffline]);
+
+  // Heartbeat to update lastSeen timestamp
+  useEffect(() => {
+      if (!user) return;
+
+      const interval = setInterval(() => {
+          const userStatusRef = doc(db, 'online-users', user.uid);
+          setDoc(userStatusRef, { lastSeen: serverTimestamp() }, { merge: true });
+      }, 60000); // Update every minute
+
+      return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     if (loading) return;
@@ -88,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (authenticatedUser) {
       localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
       setUser(authenticatedUser);
-      handleUserOnline(authenticatedUser);
+      await handleUserOnline(authenticatedUser);
       setLoading(false);
       return authenticatedUser;
     }
@@ -97,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    handleUserOffline(user);
+    await handleUserOffline(user);
     await signOutUser();
     localStorage.removeItem('currentUser');
     setUser(null);

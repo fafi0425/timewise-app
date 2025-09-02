@@ -1,10 +1,9 @@
 
 'use client';
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Wifi } from 'lucide-react';
-import type { User } from '@/lib/types';
+import { Wifi } from 'lucide-react';
+import useOnlineUsers from '@/hooks/useOnlineUsers';
 
 const getInitials = (name: string) => {
   const names = name.split(' ');
@@ -15,25 +14,7 @@ const getInitials = (name: string) => {
 };
 
 export default function OnlineUsersList() {
-  const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
-
-  useEffect(() => {
-    const updateList = () => {
-        const users: User[] = JSON.parse(localStorage.getItem('onlineUsers') || '[]');
-        setOnlineUsers(users);
-    };
-    
-    updateList();
-    const interval = setInterval(updateList, 3000); // Poll every 3 seconds
-    
-    // Also listen for storage events to update immediately from other tabs
-    window.addEventListener('storage', updateList);
-
-    return () => {
-        clearInterval(interval);
-        window.removeEventListener('storage', updateList);
-    };
-  }, []);
+  const onlineUsers = useOnlineUsers();
 
   return (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
