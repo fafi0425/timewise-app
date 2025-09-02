@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,7 +29,7 @@ export default function ActivityLog({ log }: { log: ActivityLogType[] }) {
       <ScrollArea className="h-64">
         <div className="space-y-4">
           {log.length > 0 ? (
-            log.slice().reverse().map((item, index) => (
+            log.map((item, index) => (
               <div key={`${item.id}-${index}`} className="flex items-center">
                 <div className="flex-1">
                   <p className="text-sm font-medium leading-none">

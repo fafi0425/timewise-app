@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
@@ -6,6 +7,7 @@ import { useToast } from './use-toast';
 
 const BREAK_TIME_LIMIT = 15 * 60; // 15 minutes in seconds
 const LUNCH_TIME_LIMIT = 60 * 60; // 60 minutes in seconds
+const ACTIVITY_LOG_LIMIT = 100; // Keep the last 100 entries
 
 export const getActivityLog = (): ActivityLog[] => {
     if (typeof window === 'undefined') return [];
@@ -13,7 +15,9 @@ export const getActivityLog = (): ActivityLog[] => {
 }
 
 const saveActivityLog = (log: ActivityLog[]) => {
-    localStorage.setItem('activityLog', JSON.stringify(log));
+    // Keep only the most recent logs to prevent exceeding quota
+    const limitedLog = log.slice(0, ACTIVITY_LOG_LIMIT);
+    localStorage.setItem('activityLog', JSON.stringify(limitedLog));
 }
 
 export default function useTimeTracker() {
@@ -39,7 +43,7 @@ export default function useTimeTracker() {
     if (!user) return;
 
     const newLog: ActivityLog = {
-      id: `log_${Date.now()}`,
+      id: `log_${Date.now()}_${user.uid}`,
       uid: user.uid,
       employeeName: user.name,
       date: new Date().toLocaleDateString(),
@@ -48,7 +52,15 @@ export default function useTimeTracker() {
       duration,
     };
     
-    setActivityLog(prev => [newLog, ...prev]);
+    // Update the global log
+    const allLogs = getActivityLog();
+    const updatedLogs = [newLog, ...allLogs];
+    saveActivityLog(updatedLogs);
+    
+    // Update local state for the current user's view
+    const userTodayLogs = updatedLogs.filter(log => log.uid === user.uid && log.date === new Date().toLocaleDateString());
+    setActivityLog(userTodayLogs);
+
   }, [user]);
 
   useEffect(() => {
@@ -59,9 +71,9 @@ export default function useTimeTracker() {
     setActivityLog(userTodayLogs);
 
     const savedState: Partial<UserState> = JSON.parse(localStorage.getItem(`userState_${user.email}`) || '{}');
-    if (savedState.currentState) {
+    if (savedState.currentState && savedState.currentState !== 'working') {
         setStatus(prev => ({...prev, ...savedState}));
-    } else {
+    } else if (userTodayLogs.filter(l => l.action === 'Work Started').length === 0) {
         logActivity('Work Started');
     }
   }, [user, logActivity]);
@@ -70,11 +82,7 @@ export default function useTimeTracker() {
     if(user) {
         localStorage.setItem(`userState_${user.email}`, JSON.stringify(status));
     }
-    const allLogs = getActivityLog();
-    const otherLogs = allLogs.filter(log => log.id !== activityLog[0]?.id);
-    saveActivityLog([...activityLog, ...otherLogs]);
-
-  }, [status, activityLog, user]);
+  }, [status, user]);
 
   const startAction = useCallback((type: 'break' | 'lunch') => {
     const now = new Date().toISOString();

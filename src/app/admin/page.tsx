@@ -14,6 +14,7 @@ import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTrian
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getActivityLog } from '@/hooks/useTimeTracker';
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -50,7 +51,7 @@ export default function AdminPage() {
         const allUsers = getUsers();
         setUsers(allUsers);
 
-        const activityData: ActivityLog[] = JSON.parse(localStorage.getItem('activityLog') || '[]');
+        const activityData: ActivityLog[] = getActivityLog();
         setAllActivity(activityData);
         
         const today = new Date().toLocaleDateString();
@@ -68,7 +69,7 @@ export default function AdminPage() {
 
     const fetchOverbreaks = async () => {
         setIsLoadingOverbreaks(true);
-        const activityData: ActivityLog[] = JSON.parse(localStorage.getItem('activityLog') || '[]');
+        const activityData: ActivityLog[] = getActivityLog();
         const result = await getOverbreakAlertsAction(activityData);
         setOverbreaks(result);
         setIsLoadingOverbreaks(false);
@@ -238,7 +239,7 @@ export default function AdminPage() {
                     <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
                      <ScrollArea className="h-80 pr-4">
                         <div className="space-y-3">
-                            {allActivity.slice(-20).reverse().map((a, index) => (
+                            {allActivity.slice(0, 20).map((a, index) => (
                                <div key={`${a.id}-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                                    <div>
                                        <p className="font-medium text-card-foreground">{a.employeeName} <span className="text-sm text-muted-foreground">{a.action}</span></p>
