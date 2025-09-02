@@ -25,17 +25,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
 
   const handleUserOnline = useCallback(async (user: User) => {
-    const userStatusRef = doc(db, 'online-users', user.uid);
-    await setDoc(userStatusRef, {
-        ...user,
-        lastSeen: serverTimestamp(),
-    });
+    try {
+      const userStatusRef = doc(db, 'online-users', user.uid);
+      await setDoc(userStatusRef, {
+          ...user,
+          lastSeen: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Failed to set user as online:", error);
+    }
   }, []);
 
   const handleUserOffline = useCallback(async (user: User | null) => {
       if(!user) return;
-      const userStatusRef = doc(db, 'online-users', user.uid);
-      await deleteDoc(userStatusRef);
+      try {
+        const userStatusRef = doc(db, 'online-users', user.uid);
+        await deleteDoc(userStatusRef);
+      } catch(error) {
+        console.error("Failed to set user as offline:", error);
+      }
   }, []);
   
   useEffect(() => {
@@ -49,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     setLoading(false);
 
-    const handleBeforeUnload = async () => {
+    const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
         const storedUser = localStorage.getItem('currentUser');
         if (storedUser) {
             await handleUserOffline(JSON.parse(storedUser));
@@ -60,17 +68,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
+        // Ensure user is marked offline when component unmounts (e.g. tab close)
+        if(user) {
+            handleUserOffline(user);
+        }
     }
 
-  }, [handleUserOnline, handleUserOffline]);
+  }, []); // Removed dependencies to avoid re-running on user state change within this effect
 
   // Heartbeat to update lastSeen timestamp
   useEffect(() => {
       if (!user) return;
 
       const interval = setInterval(() => {
+        try {
           const userStatusRef = doc(db, 'online-users', user.uid);
           setDoc(userStatusRef, { lastSeen: serverTimestamp() }, { merge: true });
+        } catch (error) {
+            console.error("Failed to update heartbeat:", error);
+        }
       }, 60000); // Update every minute
 
       return () => clearInterval(interval);
