@@ -190,6 +190,7 @@ export default function AdminPage() {
                                    <div>
                                        <div className="font-medium text-card-foreground">{user.name}</div>
                                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                                       <div className="text-sm text-muted-foreground">Password: {user.password}</div>
                                         <div className="text-xs text-muted-foreground mt-1">
                                             <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
                                             <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs ml-1">{user.role}</span>
