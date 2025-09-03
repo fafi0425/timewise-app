@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers, addUser, deleteUser, updateUserShift } from '@/lib/auth';
+import { getUsers, addUser, deleteUser } from '@/lib/auth';
 import { getOverbreakAlertsAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit } from 'lucide-react';
@@ -104,6 +104,11 @@ export default function AdminPage() {
             toast({ title: "Error", description: "Please fill all fields, including shift.", variant: "destructive" });
             return;
         }
+
+        if (newUserPassword.length < 6) {
+            toast({ title: "Error", description: "Password must be at least 6 characters long.", variant: "destructive" });
+            return;
+        }
         
         const newUser = await addUser({
             name: newUserName,
@@ -124,7 +129,7 @@ export default function AdminPage() {
             setNewUserShift('');
             await refreshData();
         } else {
-            toast({ title: "Error", description: "Could not add user.", variant: "destructive" });
+            toast({ title: "Error", description: "Could not add user. Email may already be in use.", variant: "destructive" });
         }
     };
 
