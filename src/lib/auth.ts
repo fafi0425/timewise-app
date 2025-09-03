@@ -75,7 +75,8 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
     const users = getUsers();
     const existingUser = users.find(u => u.email === newUser.email);
     if (existingUser) {
-        return null; // User with this email already exists
+        console.error("User with this email already exists in local storage.");
+        return null; 
     }
 
     try {
@@ -92,25 +93,15 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         const userWithId: User = { ...newUser, uid: firebaseUser.uid };
         // Don't store the password in local storage for Firebase-authenticated users
         delete userWithId.password; 
-        users.push(userWithId);
-        localStorage.setItem('users', JSON.stringify(users));
+        
+        const updatedUsers = [...users, userWithId];
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        
         return userWithId;
+
     } catch(e: any) {
-        if (e.code === 'auth/email-already-in-use') {
-            // This can happen if a user was created in Firebase but not in local storage.
-            // We should add them to local storage now.
-            const existingFirebaseUser = users.find(u => u.email === newUser.email);
-            if (existingFirebaseUser) {
-                 return existingFirebaseUser; // Already exists, just return it.
-            }
-            console.warn("User already exists in Firebase Auth. Adding to local storage.");
-            const userWithId: User = { ...newUser, uid: `user${Date.now()}` }; 
-            delete userWithId.password;
-            users.push(userWithId);
-            localStorage.setItem('users', JSON.stringify(users));
-            return userWithId;
-        }
-        console.error("Error creating user:", e);
+        // This block handles Firebase errors, e.g., if the email is already in use in Firebase Auth
+        console.error("Error creating user in Firebase:", e);
         return null;
     }
 };
