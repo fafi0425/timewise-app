@@ -1,5 +1,5 @@
 
-import type { User } from './types';
+import type { User, Shift } from './types';
 import { auth } from './firebase';
 import { 
   createUserWithEmailAndPassword, 
@@ -16,6 +16,7 @@ const defaultUsers: User[] = [
     password: 'sigma88',
     department: 'Admin',
     role: 'Administrator',
+    shift: 'morning',
   },
   {
     uid: 'user001',
@@ -24,6 +25,7 @@ const defaultUsers: User[] = [
     password: 'terra123',
     department: 'Dealing',
     role: 'Employee',
+    shift: 'morning',
   },
 ];
 
@@ -50,7 +52,8 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
             email: firebaseUser.email || email,
             name: firebaseUser.displayName || email,
             department: 'CS/KYC',
-            role: 'Employee'
+            role: 'Employee',
+            shift: 'morning',
         }
     }
     return null;
@@ -125,6 +128,16 @@ export const deleteUser = async (uid: string): Promise<void> => {
     localStorage.setItem('users', JSON.stringify(users));
 };
 
+export const updateUserShift = (userId: string, shift: Shift): void => {
+    const users = getUsers();
+    const userIndex = users.findIndex(u => u.uid === userId);
+    if (userIndex !== -1) {
+        users[userIndex].shift = shift;
+        localStorage.setItem('users', JSON.stringify(users));
+    } else {
+        throw new Error('User not found');
+    }
+};
 
 export const signOutUser = async () => {
     try {

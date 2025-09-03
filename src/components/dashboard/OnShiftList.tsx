@@ -21,45 +21,45 @@ interface OnShiftListProps {
 
 export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) {
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
-    const [activeShift, setActiveShift] = useState<Shift>('morning');
+    const [activeShiftFilter, setActiveShiftFilter] = useState<Shift>('morning');
+    const [title, setTitle] = useState('Current Shift Roster');
 
     useEffect(() => {
         const updateList = () => {
-            const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+            const allUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
             const logs: ActivityLog[] = JSON.parse(localStorage.getItem('activityLog') || '[]');
-            const currentShiftKey = localStorage.getItem('activeShift') as Shift || 'morning';
-            setActiveShift(currentShiftKey);
-            const shiftDetails = SHIFTS[currentShiftKey];
-            
+            const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
+
             const now = new Date();
             const currentHour = now.getHours();
             
-            let isWithinShiftTime;
-            if (shiftDetails.start < shiftDetails.end) {
-                // Same-day shift (e.g., 7 AM - 3 PM)
-                isWithinShiftTime = currentHour >= shiftDetails.start && currentHour < shiftDetails.end;
-            } else {
-                // Overnight shift (e.g., 11 PM - 7 AM)
-                isWithinShiftTime = currentHour >= shiftDetails.start || currentHour < shiftDetails.end;
-            }
-
-            if (!isWithinShiftTime) {
-                setOnShiftUsers([]);
-                return;
+            // Determine the actual current shift based on time
+            let actualCurrentShift: Shift = 'night';
+            if (currentHour >= SHIFTS.morning.start && currentHour < SHIFTS.mid.start) {
+                actualCurrentShift = 'morning';
+            } else if (currentHour >= SHIFTS.mid.start && currentHour < SHIFTS.night.start) {
+                actualCurrentShift = 'mid';
             }
             
+            // Use the admin's filter if set, otherwise default to the actual current shift
+            const shiftToDisplay = shiftFilter || actualCurrentShift;
+            setActiveShiftFilter(shiftToDisplay);
+            setTitle(`${SHIFTS[shiftToDisplay].name} Roster`);
+
             const todayStr = now.toLocaleDateString();
             const onShift: OnShiftUser[] = [];
             
-            users.forEach(user => {
+            allUsers.forEach(user => {
+                // Check if the user is assigned to the shift being displayed
+                if (user.shift !== shiftToDisplay) return;
+
                 const userLogsToday = logs.filter(l => l.uid === user.uid && l.date === todayStr);
                 if (userLogsToday.length === 0) return;
-
-                const latestLog = userLogsToday[0]; // Logs are prepended, so the first is the latest
 
                 const hasStartedWork = userLogsToday.some(l => l.action === 'Work Started');
 
                 if (hasStartedWork) {
+                    const latestLog = userLogsToday[0]; // Logs are prepended
                      onShift.push({
                         name: user.name,
                         department: user.department,
@@ -74,7 +74,11 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
 
         updateList();
         const interval = setInterval(updateList, 5000); // Poll for updates
-        return () => clearInterval(interval);
+        window.addEventListener('storage', updateList); // Listen for shift changes from admin
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('storage', updateList);
+        }
     }, []);
 
     const getActionBadgeVariant = (action: string) => {
@@ -88,7 +92,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             <CardHeader>
                 <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
                     <UsersIcon className="h-5 w-5 mr-2 text-primary" /> 
-                    {SHIFTS[activeShift]?.name || 'Current Shift'} Roster
+                    {title}
                 </CardTitle>
             </CardHeader>
             <CardContent>
@@ -96,7 +100,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                     <div className="space-y-3">
                         {onShiftUsers.length === 0 ? (
                             <div className="text-center py-10 text-muted-foreground">
-                                <p>No employees currently on shift.</p>
+                                <p>No employees from this shift are currently logged in.</p>
                             </div>
                         ) : (
                             onShiftUsers.map((u, index) => (

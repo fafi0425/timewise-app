@@ -6,6 +6,7 @@ export interface User {
   department: 'Dealing' | 'CS/KYC' | 'Admin' | string;
   role: 'Manager' | 'Team Leader' | 'HR' | 'Employee' | 'Administrator';
   password?: string;
+  shift?: Shift;
 }
 
 export interface ActivityLog {

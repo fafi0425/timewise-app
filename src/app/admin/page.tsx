@@ -7,16 +7,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers, addUser, deleteUser } from '@/lib/auth';
+import { getUsers, addUser, deleteUser, updateUserShift } from '@/lib/auth';
 import { getOverbreakAlertsAction } from '@/lib/actions';
-import type { User, ActivityLog } from '@/lib/types';
-import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2 } from 'lucide-react';
+import type { User, ActivityLog, Shift } from '@/lib/types';
+import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getActivityLog } from '@/hooks/useTimeTracker';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import ShiftManager from '@/components/admin/ShiftManager';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { SHIFTS } from '@/components/admin/ShiftManager';
+import { assignUserShift } from '@/ai/flows/assign-user-shift';
+
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -46,6 +58,11 @@ export default function AdminPage() {
     const [newUserDepartment, setNewUserDepartment] = useState('');
     const [newUserRole, setNewUserRole] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
+    const [newUserShift, setNewUserShift] = useState<Shift | ''>('');
+
+    const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [selectedShift, setSelectedShift] = useState<Shift | ''>('');
 
     const { toast } = useToast();
 
@@ -83,8 +100,8 @@ export default function AdminPage() {
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newUserName || !newUserEmail || !newUserDepartment || !newUserRole || !newUserPassword) {
-            toast({ title: "Error", description: "Please fill all fields.", variant: "destructive" });
+        if (!newUserName || !newUserEmail || !newUserDepartment || !newUserRole || !newUserPassword || !newUserShift) {
+            toast({ title: "Error", description: "Please fill all fields, including shift.", variant: "destructive" });
             return;
         }
         
@@ -94,6 +111,7 @@ export default function AdminPage() {
             department: newUserDepartment,
             role: newUserRole as any,
             password: newUserPassword,
+            shift: newUserShift as Shift,
         });
 
         if (newUser) {
@@ -103,6 +121,7 @@ export default function AdminPage() {
             setNewUserDepartment('');
             setNewUserRole('');
             setNewUserPassword('');
+            setNewUserShift('');
             await refreshData();
         } else {
             toast({ title: "Error", description: "Could not add user.", variant: "destructive" });
@@ -115,6 +134,31 @@ export default function AdminPage() {
         await refreshData();
     };
 
+    const openEditShiftModal = (user: User) => {
+        setSelectedUser(user);
+        setSelectedShift(user.shift || '');
+        setIsShiftModalOpen(true);
+    };
+
+    const handleUpdateShift = async () => {
+        if (!selectedUser || !selectedShift) {
+            toast({ title: "Error", description: "Please select a shift.", variant: "destructive" });
+            return;
+        }
+
+        const result = await assignUserShift({ userId: selectedUser.uid, shift: selectedShift });
+
+        if (result.success) {
+            toast({ title: "Success", description: result.message });
+            await refreshData();
+        } else {
+            toast({ title: "Error", description: result.message, variant: "destructive" });
+        }
+        
+        setIsShiftModalOpen(false);
+        setSelectedUser(null);
+        setSelectedShift('');
+    };
 
     return (
     <AuthCheck adminOnly>
@@ -194,6 +238,14 @@ export default function AdminPage() {
                                     <SelectItem value="Employee">Employee</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <Select value={newUserShift} onValueChange={(val) => setNewUserShift(val as Shift)}>
+                                <SelectTrigger><SelectValue placeholder="Select Shift" /></SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(SHIFTS).map(([key, {name}]) => (
+                                        <SelectItem key={key} value={key}>{name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <Input value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} type="password" placeholder="Password" required />
                             <Button type="submit" className="w-full" variant="secondary"><UserPlus className="mr-2 h-4 w-4"/>Add User</Button>
                         </form>
@@ -207,15 +259,20 @@ export default function AdminPage() {
                                    <div>
                                        <div className="font-medium text-card-foreground">{user.name}</div>
                                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                                       <div className="text-sm text-muted-foreground">Password: {user.password}</div>
-                                        <div className="text-xs text-muted-foreground mt-1">
+                                        <div className="text-xs text-muted-foreground mt-1 space-x-1">
                                             <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
-                                            <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs ml-1">{user.role}</span>
+                                            <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
+                                            {user.shift && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift]?.name}</span>}
                                         </div>
                                    </div>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                     <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10">
+                                        <Edit className="h-4 w-4" />
+                                     </Button>
+                                     <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10">
+                                         <Trash2 className="h-4 w-4" />
+                                     </Button>
+                                    </div>
                                </div>
                            ))}
                         </div>
@@ -263,6 +320,37 @@ export default function AdminPage() {
                 </Card>
             </div>
             
+            <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Shift for {selectedUser?.name}</DialogTitle>
+                  <DialogDescription>
+                    Select the new shift schedule for this user. This will determine when they appear on the "On Shift" roster.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <Select value={selectedShift} onValueChange={(val) => setSelectedShift(val as Shift)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a shift" />
+                    </SelectTrigger>
+                    <SelectContent>
+                       {Object.entries(SHIFTS).map(([key, { name }]) => (
+                         <SelectItem key={key} value={key}>
+                           {name}
+                         </SelectItem>
+                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleUpdateShift}>Save Changes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
         </main>
     </AuthCheck>
     );
