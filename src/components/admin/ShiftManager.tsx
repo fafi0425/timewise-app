@@ -10,9 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import type { Shift } from '@/lib/types';
 
 export const SHIFTS: Record<Shift, { name: string, start: number, end: number, icon: React.ReactNode }> = {
-    morning: { name: 'Morning Shift', start: 7, end: 15, icon: <Sunrise className="h-5 w-5" /> }, // 7 AM to 3 PM
-    mid: { name: 'Mid Shift', start: 15, end: 23, icon: <Sunset className="h-5 w-5" /> },   // 3 PM to 11 PM
-    night: { name: 'Night Shift', start: 23, end: 7, icon: <Moon className="h-5 w-5" /> },    // 11 PM to 7 AM
+    morning: { name: 'Morning Shift', start: 5, end: 14, icon: <Sunrise className="h-5 w-5" /> }, // 5 AM to 2 PM
+    mid: { name: 'Mid Shift', start: 13, end: 22, icon: <Sunset className="h-5 w-5" /> },   // 1 PM to 10 PM
+    night: { name: 'Night Shift', start: 21, end: 6, icon: <Moon className="h-5 w-5" /> },    // 9 PM to 6 AM
 };
 
 export default function ShiftManager() {
@@ -26,11 +26,11 @@ export default function ShiftManager() {
         } else {
              // Set initial shift based on current time
             const hour = new Date().getHours();
-            if (SHIFTS.night.start > SHIFTS.morning.start && (hour >= SHIFTS.night.start || hour < SHIFTS.morning.start)) {
+            if (SHIFTS.night.start <= hour || hour < SHIFTS.night.end) {
                 setCurrentShift('night');
-            } else if (hour >= SHIFTS.morning.start && hour < SHIFTS.mid.start) {
+            } else if (hour >= SHIFTS.morning.start && hour < SHIFTS.morning.end) {
                 setCurrentShift('morning');
-            } else if (hour >= SHIFTS.mid.start && hour < SHIFTS.night.start) {
+            } else if (hour >= SHIFTS.mid.start && hour < SHIFTS.mid.end) {
                 setCurrentShift('mid');
             }
         }

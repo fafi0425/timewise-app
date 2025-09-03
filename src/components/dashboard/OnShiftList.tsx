@@ -34,12 +34,12 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             const currentHour = now.getHours();
             
             // Determine the actual current shift based on time
-            let actualCurrentShift: Shift = 'night';
-             if (SHIFTS.night.start > SHIFTS.morning.start && (currentHour >= SHIFTS.night.start || currentHour < SHIFTS.morning.start)) {
+            let actualCurrentShift: Shift = 'morning';
+            if (SHIFTS.night.start <= currentHour || currentHour < SHIFTS.night.end) {
                 actualCurrentShift = 'night';
-            } else if (currentHour >= SHIFTS.morning.start && currentHour < SHIFTS.mid.start) {
+            } else if (currentHour >= SHIFTS.morning.start && currentHour < SHIFTS.morning.end) {
                 actualCurrentShift = 'morning';
-            } else if (currentHour >= SHIFTS.mid.start && currentHour < SHIFTS.night.start) {
+            } else if (currentHour >= SHIFTS.mid.start && currentHour < SHIFTS.mid.end) {
                 actualCurrentShift = 'mid';
             }
             
