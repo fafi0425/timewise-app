@@ -29,7 +29,6 @@ import {
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { assignUserShift } from '@/ai/flows/assign-user-shift';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -195,7 +194,7 @@ export default function AdminPage() {
             const isEmployeeMatch = filterEmployee === 'all' || log.uid === filterEmployee;
             const isBreakOrLunch = log.action === 'Break In' || log.action === 'Lunch In';
 
-            return isDateInRange && isEmployeeMatch && isBreakOrLunch && log.duration;
+            return isDateInRange && isEmployeeMatch && log.duration;
         });
 
         if (filtered.length === 0) {
@@ -210,24 +209,6 @@ export default function AdminPage() {
     const handlePreviewData = () => {
         if (filterLogs()) {
             setIsPreviewModalOpen(true);
-        }
-    };
-
-    const handleExportExcel = () => {
-        if (filterLogs()) {
-             const dataToExport = filteredLogs.map(log => ({
-                'Employee': log.employeeName,
-                'Date': log.date,
-                'Time': log.time,
-                'Type': log.action.replace(' In', ''),
-                'Duration (min)': log.duration
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Break Logs");
-
-            XLSX.writeFile(workbook, `Break_Logs_${filterFromDate}_to_${filterToDate}.xlsx`);
         }
     };
 
@@ -256,6 +237,37 @@ export default function AdminPage() {
             doc.text("Break Logs", 14, 15);
             doc.save(`Break_Logs_${filterFromDate}_to_${filterToDate}.pdf`);
         }
+    };
+
+    const handleExportOverbreaksPdf = () => {
+        if (overbreaks.length === 0) {
+            toast({ title: "No Data", description: "There are no overbreaks to export." });
+            return;
+        }
+
+        const doc = new jsPDF();
+        const tableColumn = ["Employee", "Date", "Time", "Type", "Exceeded By (min)"];
+        const tableRows: (string|number|null)[][] = [];
+
+        overbreaks.forEach(o => {
+            const excessTime = o.duration - (o.action.includes('Break') ? 15 : 60);
+            const logData = [
+                o.employeeName,
+                o.date,
+                o.time,
+                o.action.replace(' In', ''),
+                excessTime > 0 ? excessTime : 'N/A'
+            ];
+            tableRows.push(logData);
+        });
+
+        (doc as any).autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 20,
+        });
+        doc.text("Overbreak Alerts Report", 14, 15);
+        doc.save(`Overbreaks_Report_${new Date().toLocaleDateString()}.pdf`);
     };
 
     return (
@@ -306,7 +318,6 @@ export default function AdminPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-4">
-                    <Button variant="secondary" onClick={handleExportExcel}><FileDown className="mr-2 h-4 w-4" /> Export to Excel</Button>
                     <Button variant="destructive" onClick={handleExportPdf}><FileDown className="mr-2 h-4 w-4" /> Export to PDF</Button>
                     <Button onClick={handlePreviewData}><Eye className="mr-2 h-4 w-4" /> Preview Data</Button>
                 </div>
@@ -381,9 +392,14 @@ export default function AdminPage() {
 
             <div className="grid lg:grid-cols-2 gap-6 mb-8">
                 <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                    <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline flex items-center">
-                        <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
-                    </CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
+                        <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
+                            <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
+                        </CardTitle>
+                        <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
+                            <FileDown className="mr-2 h-4 w-4" /> Download PDF
+                        </Button>
+                    </CardHeader>
                     <ScrollArea className="h-80 pr-4">
                         <div className="space-y-3">
                             {isLoadingOverbreaks ? <p>Loading alerts...</p> : 
@@ -497,4 +513,5 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
-}
+
+    
