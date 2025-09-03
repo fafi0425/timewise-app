@@ -74,7 +74,7 @@ export default function DashboardPage() {
         </div>
         
         <div className="mt-8">
-            <OnShiftList />
+            <OnShiftList simpleStatus={true} />
         </div>
 
          <StatisticsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} />

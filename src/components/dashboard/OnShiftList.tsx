@@ -15,7 +15,11 @@ interface OnShiftUser {
     latestActionTime: string;
 }
 
-export default function OnShiftList() {
+interface OnShiftListProps {
+    simpleStatus?: boolean;
+}
+
+export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) {
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [activeShift, setActiveShift] = useState<Shift>('morning');
 
@@ -53,14 +57,9 @@ export default function OnShiftList() {
 
                 const latestLog = userLogsToday[0]; // Logs are prepended, so the first is the latest
 
-                // User is considered on shift if their last action wasn't a "sign out" equivalent
-                // and they have started work. We'll check for 'Work Started' as a baseline.
                 const hasStartedWork = userLogsToday.some(l => l.action === 'Work Started');
 
                 if (hasStartedWork) {
-                    // For simplicity, we are showing anyone who has clocked in today on the shift.
-                    // A more complex implementation could check if the last action was 'Clock Out'
-                    // but we don't have that action yet.
                      onShift.push({
                         name: user.name,
                         department: user.department,
@@ -105,9 +104,14 @@ export default function OnShiftList() {
                                     <div>
                                         <div className="font-medium text-card-foreground">{u.name}</div>
                                         <div className="text-sm text-muted-foreground">{u.department}</div>
-                                        <div className="text-xs text-primary">Last activity at {u.latestActionTime}</div>
+                                        {!simpleStatus && (
+                                            <div className="text-xs text-primary">Last activity at {u.latestActionTime}</div>
+                                        )}
                                     </div>
-                                    <Badge variant={getActionBadgeVariant(u.latestAction)}>{u.latestAction}</Badge>
+                                    {simpleStatus ? 
+                                     <Badge variant="secondary">Logged In</Badge> :
+                                     <Badge variant={getActionBadgeVariant(u.latestAction)}>{u.latestAction}</Badge>
+                                    }
                                 </div>
                             ))
                         )}
