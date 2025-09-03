@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Clock, Crown, LogOut } from 'lucide-react';
+import { Clock, Crown, LogOut, User as UserIcon } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
   const [time, setTime] = useState('');
@@ -41,6 +43,14 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
             <div className="text-white/80 text-sm hidden sm:block">
               <span className="font-code">{time}</span>
             </div>
+             {!isAdmin && (
+               <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2">
+                <Link href="/profile">
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  My Profile
+                </Link>
+              </Button>
+            )}
             <Button
               onClick={logout}
               variant="ghost"
