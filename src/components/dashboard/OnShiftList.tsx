@@ -54,7 +54,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             // Use the admin's filter if set, otherwise default to the actual current shift
             const shiftToDisplay = shiftFilter || actualCurrentShift;
             setActiveShiftFilter(shiftToDisplay);
-            setTitle(`${SHIFTS[shiftToDisplay].name} Roster`);
+            setTitle(`${SHIFTS[shiftToDisplay]?.name || 'Custom Shift'} Roster`);
 
             const todayStr = now.toLocaleDateString();
             const rosterUsers: OnShiftUser[] = [];
@@ -94,6 +94,8 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
 
 
             usersInShift.forEach(user => {
+                if (user.shift === 'none') return;
+                
                 const userLogsToday = logs.filter(l => l.uid === user.uid && l.date === todayStr);
                 const latestLog = userLogsToday[0]; // Logs are prepended, so first one is the latest
 

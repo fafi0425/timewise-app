@@ -13,7 +13,7 @@ import type { Shift } from '@/lib/types';
 
 const AssignUserShiftInputSchema = z.object({
   userId: z.string().describe('The unique identifier of the user.'),
-  shift: z.enum(['morning', 'mid', 'night']).describe('The shift to assign to the user.'),
+  shift: z.enum(['morning', 'mid', 'night', 'custom', 'none']).describe('The shift to assign to the user.'),
 });
 export type AssignUserShiftInput = z.infer<typeof AssignUserShiftInputSchema>;
 
@@ -22,7 +22,7 @@ const AssignUserShiftOutputSchema = z.object({
   success: z.boolean().describe('Whether the shift assignment was successful.'),
   message: z.string().describe('A message indicating the result of the operation.'),
   userId: z.string().optional().describe('The unique identifier of the user.'),
-  shift: z.enum(['morning', 'mid', 'night']).optional().describe('The shift assigned to the user.'),
+  shift: z.enum(['morning', 'mid', 'night', 'custom', 'none']).optional().describe('The shift assigned to the user.'),
 });
 export type AssignUserShiftOutput = z.infer<typeof AssignUserShiftOutputSchema>;
 

@@ -153,7 +153,7 @@ export default function AdminPage() {
 
     const openEditShiftModal = (user: User) => {
         setSelectedUser(user);
-        setSelectedShift(user.shift || '');
+        setSelectedShift(user.shift || 'none');
         setIsShiftModalOpen(true);
     };
 
@@ -372,6 +372,7 @@ export default function AdminPage() {
                             <Select value={newUserShift} onValueChange={(val) => setNewUserShift(val as Shift)}>
                                 <SelectTrigger><SelectValue placeholder="Select Shift" /></SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="none">No Shift</SelectItem>
                                     {Object.entries(SHIFTS).map(([key, {name}]) => (
                                         <SelectItem key={key} value={key}>{name}</SelectItem>
                                     ))}
@@ -393,7 +394,7 @@ export default function AdminPage() {
                                         <div className="text-xs text-muted-foreground mt-1 space-x-1">
                                             <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
                                             <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
-                                            {user.shift && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift]?.name}</span>}
+                                            {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift]?.name}</span>}
                                         </div>
                                    </div>
                                     <div className="flex items-center gap-1">
@@ -473,6 +474,7 @@ export default function AdminPage() {
                       <SelectValue placeholder="Select a shift" />
                     </SelectTrigger>
                     <SelectContent>
+                        <SelectItem value="none">No Shift</SelectItem>
                        {Object.entries(SHIFTS).map(([key, { name }]) => (
                          <SelectItem key={key} value={key}>
                            {name}
@@ -589,5 +591,6 @@ export default function AdminPage() {
     );
 
     
+
 
 
