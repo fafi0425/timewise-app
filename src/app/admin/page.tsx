@@ -93,6 +93,7 @@ export default function AdminPage() {
             const result = await getAllUsersAction();
             if (result.success && result.users) {
                 setUsers(result.users);
+                 setStats(prev => ({ ...prev, totalEmployees: result.users?.length || 0 }));
             } else {
                 toast({ title: "Error", description: result.message, variant: "destructive" });
                 setUsers([]);
@@ -112,7 +113,6 @@ export default function AdminPage() {
 
         setStats(prev => ({
             ...prev,
-            totalEmployees: users.length, // this might be one render behind, but will be updated.
             totalActivities: activityData.length,
             todayBreaks: todayActivities.filter(a => a.action === 'Break Out').length,
             todayLunches: todayActivities.filter(a => a.action === 'Lunch Out').length,
@@ -120,7 +120,7 @@ export default function AdminPage() {
 
 
         await fetchOverbreaks();
-    }, [fetchOverbreaks, toast, users.length]);
+    }, [fetchOverbreaks, toast]);
 
     useEffect(() => {
         refreshData();
