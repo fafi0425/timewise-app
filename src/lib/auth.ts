@@ -23,10 +23,17 @@ const defaultUsers: User[] = [
 
 export const seedInitialData = () => {
   if (typeof window !== 'undefined') {
-      // Always reset to default on app load for a clean slate as requested.
+      const users = localStorage.getItem('users');
+      // Only seed if users don't exist, to avoid overwriting on every load.
+      if (!users) {
+        localStorage.setItem('users', JSON.stringify(defaultUsers));
+      }
+      
+      // For the purpose of this project, we start fresh on reload.
+      // This can be changed to persist data.
       localStorage.setItem('users', JSON.stringify(defaultUsers));
       localStorage.removeItem('activityLog');
-      localStorage.removeItem('currentUser'); // <-- This is the new line to fix the issue
+      localStorage.removeItem('currentUser');
       
       // Remove any stale user state
       Object.keys(localStorage).forEach(key => {
@@ -41,26 +48,25 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
   const localUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
   const localUserMatch = localUsers.find(u => u.email === email);
 
+  // Special case for the default admin user to allow local password check
+  if (localUserMatch && localUserMatch.email === 'admin123@gmail.com' && localUserMatch.password === pass) {
+    return localUserMatch;
+  }
+  
   // If user is not in the local list at all, deny access.
   if (!localUserMatch) {
     console.error("Authentication failed: User not found in local user list.");
     return null;
   }
   
-  // For locally defined users (like the default admin), check the password directly.
-  if (localUserMatch.password === pass) {
-    return localUserMatch;
-  }
-
-  // For users created via registration, try Firebase Auth.
-  // The user MUST exist in the local list to even get to this point.
+  // For all other users, they must exist in the local list AND authenticate via Firebase.
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     // If Firebase sign-in is successful, return the user data from our local list.
     return localUserMatch;
   } catch (error: any) {
+    // This will catch invalid credentials for Firebase-backed users.
     console.error("Firebase Authentication failed:", error.message);
-    // If Firebase auth fails (e.g., wrong password), return null.
     return null;
   }
 };
