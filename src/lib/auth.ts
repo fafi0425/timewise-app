@@ -1,3 +1,4 @@
+
 import type { User, Shift } from './types';
 import { auth, db } from './firebase';
 import { 
@@ -15,7 +16,6 @@ import {
     deleteDoc, 
     updateDoc
 } from 'firebase/firestore';
-import { getAllUsers as getAllUsersFlow } from '@/ai/flows/get-all-users';
 
 
 const defaultAdmin: User = {
@@ -76,17 +76,16 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
 
 
 export const getUsers = async (): Promise<User[]> => {
-  try {
-    const result = await getAllUsersFlow();
-    if(result.success && result.users) {
-        return result.users as User[];
+    try {
+        const usersCol = collection(db, 'users');
+        const userSnapshot = await getDocs(usersCol);
+        const userList = userSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[];
+        return userList;
+    } catch (e) {
+        console.error("Error fetching users directly from Firestore:", e);
+        // This will now throw the permission error up to the UI, which is more informative.
+        throw e;
     }
-    console.error("Failed to get users from flow:", result.message);
-    return [];
-  } catch(e) {
-    console.error("Error fetching users via Genkit flow:", e);
-    throw e;
-  }
 };
 
 export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> => {
