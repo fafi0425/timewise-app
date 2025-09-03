@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers, addUser, deleteUser, updateUserShift } from '@/lib/auth';
+import { getUsers, addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
 import { getOverbreakAlertsAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
-import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit } from 'lucide-react';
+import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit, Edit2 } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -66,6 +66,9 @@ export default function AdminPage() {
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [selectedShift, setSelectedShift] = useState<Shift | ''>('');
+    
+    const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
     
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>([]);
@@ -152,6 +155,25 @@ export default function AdminPage() {
         setSelectedUser(user);
         setSelectedShift(user.shift || '');
         setIsShiftModalOpen(true);
+    };
+
+    const openEditUserModal = (user: User) => {
+        setEditingUser({ ...user });
+        setIsUserEditModalOpen(true);
+    };
+
+    const handleUpdateUser = () => {
+        if (editingUser) {
+            try {
+                updateUser(editingUser);
+                toast({ title: "Success", description: "User details updated." });
+                refreshData();
+                setIsUserEditModalOpen(false);
+                setEditingUser(null);
+            } catch (error: any) {
+                toast({ title: "Error", description: error.message, variant: "destructive" });
+            }
+        }
     };
 
     const handleUpdateShift = async () => {
@@ -376,7 +398,10 @@ export default function AdminPage() {
                                    </div>
                                     <div className="flex items-center gap-1">
                                      <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10">
-                                        <Edit className="h-4 w-4" />
+                                        <Clock className="h-4 w-4" />
+                                     </Button>
+                                     <Button variant="outline" size="icon" onClick={() => openEditUserModal(user)} className="text-primary hover:bg-primary/10">
+                                        <Edit2 className="h-4 w-4" />
                                      </Button>
                                      <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10">
                                          <Trash2 className="h-4 w-4" />
@@ -461,6 +486,55 @@ export default function AdminPage() {
                     <Button variant="outline">Cancel</Button>
                   </DialogClose>
                   <Button onClick={handleUpdateShift}>Save Changes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isUserEditModalOpen} onOpenChange={setIsUserEditModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit User: {editingUser?.name}</DialogTitle>
+                  <DialogDescription>
+                    Update the user's details below.
+                  </DialogDescription>
+                </DialogHeader>
+                {editingUser && (
+                <div className="py-4 space-y-4">
+                    <div>
+                        <Label htmlFor="edit-name">Full Name</Label>
+                        <Input id="edit-name" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} />
+                    </div>
+                    <div>
+                        <Label htmlFor="edit-department">Department</Label>
+                        <Select value={editingUser.department} onValueChange={val => setEditingUser({...editingUser, department: val})}>
+                            <SelectTrigger id="edit-department"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Dealing">Dealing</SelectItem>
+                                <SelectItem value="CS/KYC">CS/KYC</SelectItem>
+                                <SelectItem value="Admin">Admin</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div>
+                        <Label htmlFor="edit-role">Role</Label>
+                        <Select value={editingUser.role} onValueChange={val => setEditingUser({...editingUser, role: val as User['role']})}>
+                            <SelectTrigger id="edit-role"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Manager">Manager</SelectItem>
+                                <SelectItem value="Team Leader">Team Leader</SelectItem>
+                                <SelectItem value="HR">HR</SelectItem>
+                                <SelectItem value="Employee">Employee</SelectItem>
+                                <SelectItem value="Administrator">Administrator</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                )}
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleUpdateUser}>Save Changes</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

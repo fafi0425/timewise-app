@@ -37,46 +37,29 @@ export const seedInitialData = () => {
 };
 
 export const authenticateUser = async (email: string, pass: string): Promise<User | null> => {
-  // First, check if the credentials match any of the seeded/local users.
-  // This is especially for the default admin/user that don't exist in Firebase Auth.
   const localUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
   const localUserMatch = localUsers.find(u => u.email === email && u.password === pass);
-  
+
   if (localUserMatch) {
-    // If it's a seeded user, we can try to sign them into Firebase if they exist there,
-    // but if not, we can still proceed with the local data. This allows for flexibility.
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      const firebaseUser = userCredential.user;
-      return { ...localUserMatch, uid: firebaseUser.uid };
-    } catch (error) {
-       // This error is expected if the seeded user is not in Firebase Auth.
-       // We can safely ignore it and return the matched local user.
-       console.log(`Local user ${email} not in Firebase Auth, proceeding with local data.`);
-       return localUserMatch;
-    }
+    return localUserMatch;
   }
 
-  // If no local user was found, it must be a registered user, so try Firebase Auth.
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     const firebaseUser = userCredential.user;
-    if (firebaseUser) {
-        const user = localUsers.find(u => u.email === email);
-        if (user) {
-            return { ...user, uid: firebaseUser.uid };
-        }
-        // Fallback for a user that exists in Firebase but somehow not locally.
-        return {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || email,
-            name: firebaseUser.displayName || email,
-            department: 'CS/KYC',
-            role: 'Employee',
-            shift: 'morning',
-        }
+    const user = localUsers.find(u => u.email === email);
+    if (user) {
+        return { ...user, uid: firebaseUser.uid };
     }
-    return null;
+    // Fallback for a user that exists in Firebase but somehow not locally.
+    return {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || email,
+        name: firebaseUser.displayName || email,
+        department: 'CS/KYC',
+        role: 'Employee',
+        shift: 'morning',
+    }
   } catch (error: any) {
     console.error("Firebase Authentication failed:", error);
     return null;
@@ -100,13 +83,11 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password!);
         const firebaseUser = userCredential.user;
         
-        // Send verification email
         try {
           await sendEmailVerification(firebaseUser);
           console.log("Verification email sent.");
         } catch (emailError) {
           console.error("Failed to send verification email:", emailError);
-          // We don't block registration if email fails, just log it.
         }
 
         const userWithId: User = { ...newUser, uid: firebaseUser.uid };
@@ -114,11 +95,9 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         localStorage.setItem('users', JSON.stringify(users));
         return userWithId;
     } catch(e: any) {
-        // If user already exists in Firebase auth, but not locally (e.g. from previous session)
-        // just add them to local storage list without creating a new auth user.
         if (e.code === 'auth/email-already-in-use') {
             console.warn("User already exists in Firebase Auth. Adding to local storage.");
-             const userWithId: User = { ...newUser, uid: `user${Date.now()}` }; // Generate a temporary local UID
+             const userWithId: User = { ...newUser, uid: `user${Date.now()}` }; 
              users.push(userWithId);
              localStorage.setItem('users', JSON.stringify(users));
              return userWithId;
@@ -133,12 +112,8 @@ export const deleteUser = async (uid: string): Promise<void> => {
     const userToDelete = users.find(u => u.uid === uid);
     if (!userToDelete) return;
     
-    // We only attempt to delete from Firebase if it's not a local-only UID
     if (!userToDelete.uid.startsWith('user') && !userToDelete.uid.startsWith('admin')) {
         try {
-          // This is a placeholder for a proper admin SDK implementation.
-          // Directly deleting users from the client is not secure or scalable.
-          // In a real app, this would be an admin-privileged server-side call.
           console.warn("Client-side user deletion is not recommended for production. Deleting from Firebase Auth is complex from the client.");
         } catch (error) {
             console.error("Error deleting user from Firebase:", error);
@@ -147,6 +122,18 @@ export const deleteUser = async (uid: string): Promise<void> => {
     
     users = users.filter(user => user.uid !== uid);
     localStorage.setItem('users', JSON.stringify(users));
+};
+
+export const updateUser = (updatedUser: User): void => {
+    const users = getUsers();
+    const userIndex = users.findIndex(u => u.uid === updatedUser.uid);
+    
+    if (userIndex !== -1) {
+        users[userIndex] = { ...users[userIndex], ...updatedUser };
+        localStorage.setItem('users', JSON.stringify(users));
+    } else {
+        throw new Error('User not found');
+    }
 };
 
 export const updateUserShift = (userId: string, shift: Shift): void => {
