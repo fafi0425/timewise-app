@@ -17,7 +17,7 @@ const defaultUsers: User[] = [
     password: 'sigma88',
     department: 'Admin',
     role: 'Administrator',
-    shift: 'morning',
+    shift: 'none',
   }
 ];
 
@@ -29,8 +29,7 @@ export const seedInitialData = () => {
         localStorage.setItem('users', JSON.stringify(defaultUsers));
       }
       
-      // For the purpose of this project, we start fresh on reload.
-      // This can be changed to persist data.
+      // For the purpose of this project, we start with only the default admin.
       localStorage.setItem('users', JSON.stringify(defaultUsers));
       localStorage.removeItem('activityLog');
       localStorage.removeItem('currentUser');
@@ -96,7 +95,7 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
           console.error("Failed to send verification email:", emailError);
         }
 
-        const userWithId: User = { ...newUser, uid: firebaseUser.uid };
+        const userWithId: User = { ...newUser, uid: firebaseUser.uid, shift: 'none' };
         // Don't store the password in local storage for Firebase-authenticated users
         delete userWithId.password; 
         
