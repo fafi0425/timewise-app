@@ -75,7 +75,8 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
 
 export const getUsers = (): User[] => {
   if (typeof window === 'undefined') return [];
-  return JSON.parse(localStorage.getItem('users') || '[]');
+  const users = localStorage.getItem('users');
+  return users ? JSON.parse(users) : [];
 };
 
 export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> => {
@@ -129,12 +130,16 @@ export const deleteUser = async (uid: string): Promise<void> => {
 };
 
 export const updateUserShift = (userId: string, shift: Shift): void => {
+    // Re-fetch users from localStorage to ensure we have the latest list
     const users = getUsers();
     const userIndex = users.findIndex(u => u.uid === userId);
+    
     if (userIndex !== -1) {
         users[userIndex].shift = shift;
         localStorage.setItem('users', JSON.stringify(users));
     } else {
+        // This will now be much less likely to happen.
+        console.error(`Failed to update shift. User with ID ${userId} not found.`);
         throw new Error('User not found');
     }
 };
