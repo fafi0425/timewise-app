@@ -26,12 +26,12 @@ export default function ShiftManager() {
         } else {
              // Set initial shift based on current time
             const hour = new Date().getHours();
-            if (hour >= SHIFTS.morning.start && hour < SHIFTS.mid.start) {
+            if (SHIFTS.night.start > SHIFTS.morning.start && (hour >= SHIFTS.night.start || hour < SHIFTS.morning.start)) {
+                setCurrentShift('night');
+            } else if (hour >= SHIFTS.morning.start && hour < SHIFTS.mid.start) {
                 setCurrentShift('morning');
             } else if (hour >= SHIFTS.mid.start && hour < SHIFTS.night.start) {
                 setCurrentShift('mid');
-            } else {
-                setCurrentShift('night');
             }
         }
     }, []);
@@ -42,6 +42,8 @@ export default function ShiftManager() {
             title: "Shift Updated",
             description: `The active shift is now ${SHIFTS[currentShift].name}.`,
         });
+        // This will trigger the 'storage' event listener in OnShiftList
+        window.dispatchEvent(new Event('storage'));
     };
 
     return (
