@@ -393,11 +393,11 @@ export default function AdminPage() {
                                         <div className="text-xs text-muted-foreground mt-1 space-x-1">
                                             <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
                                             <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
-                                            {user.shift && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift]?.name}</span>}
+                                            {user.shift && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift]?.name}</span>}
                                         </div>
                                    </div>
                                     <div className="flex items-center gap-1">
-                                     <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10">
+                                     <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10" disabled={user.role === 'Administrator'}>
                                         <Clock className="h-4 w-4" />
                                      </Button>
                                      <Button variant="outline" size="icon" onClick={() => openEditUserModal(user)} className="text-primary hover:bg-primary/10">
@@ -589,4 +589,5 @@ export default function AdminPage() {
     );
 
     
+
 

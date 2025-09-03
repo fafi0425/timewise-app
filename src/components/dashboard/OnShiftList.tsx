@@ -59,7 +59,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             const todayStr = now.toLocaleDateString();
             const rosterUsers: OnShiftUser[] = [];
             
-            const usersInShift = allUsers.filter(user => user.shift === shiftToDisplay);
+            const usersInShift = allUsers.filter(user => user.shift === shiftToDisplay && user.role !== 'Administrator');
 
             if (shiftToDisplay === 'custom') {
                 const customStart = localStorage.getItem('customShiftStart');
@@ -79,6 +79,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                      if (now >= startTime && now <= endTime) {
                          // Find all users who are logged in, regardless of their assigned shift
                          const loggedInUsers = allUsers.filter(u => {
+                            if (u.role === 'Administrator') return false;
                             const userLogsToday = logs.filter(l => l.uid === u.uid && l.date === todayStr);
                             const latestLog = userLogsToday[0];
                             return latestLog && latestLog.action !== 'Work Ended';
@@ -171,7 +172,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                                     </div>
                                     {simpleStatus ? 
                                      <Badge variant={u.latestAction === 'Logged Out' ? 'destructive' : 'secondary'}>
-                                        {u.latestAction === 'Logged Out' ? 'Logged Out' : 'Logged In'}
+                                        {u.latestAction === 'Logged Out' ? 'Logged Out' : 'Active'}
                                      </Badge> :
                                      <Badge variant={getActionBadgeVariant(u.latestAction)}>{u.latestAction}</Badge>
                                     }
