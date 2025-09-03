@@ -7,15 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, Eye, EyeOff, LoaderCircle, User as UserIcon } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LoaderCircle, User as UserIcon, Building } from 'lucide-react';
 import Link from 'next/link';
 import { addUser } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 export default function SignUpForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [department, setDepartment] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -26,7 +28,7 @@ export default function SignUpForm() {
     e.preventDefault();
     setLoading(true);
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !department) {
       toast({
         title: 'Error',
         description: 'Please fill all fields.',
@@ -41,7 +43,7 @@ export default function SignUpForm() {
         name,
         email,
         password,
-        department: 'CS/KYC', 
+        department, 
         role: 'Employee'
     });
 
@@ -107,6 +109,23 @@ export default function SignUpForm() {
               placeholder="Enter your email address"
             />
           </div>
+        </div>
+        <div>
+            <Label htmlFor="department" className="mb-2 block text-sm font-semibold text-card-foreground">
+                Department
+            </Label>
+            <div className="relative">
+                <Building className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+                <Select value={department} onValueChange={setDepartment}>
+                    <SelectTrigger className="pl-12 pr-4 py-6 text-base">
+                        <SelectValue placeholder="Select your department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Dealing">Dealing</SelectItem>
+                        <SelectItem value="CS/KYC">CS/KYC</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
 
         <div>
