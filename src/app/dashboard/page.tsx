@@ -14,6 +14,7 @@ import TeamOverbreakAlerts from '@/components/dashboard/TeamOverbreakAlerts';
 import StatisticsModal from '@/components/dashboard/StatisticsModal';
 import { Button } from '@/components/ui/button';
 import { BarChart2 } from 'lucide-react';
+import OnShiftList from '@/components/dashboard/OnShiftList';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -70,6 +71,10 @@ export default function DashboardPage() {
             <SummaryCard summary={summary} />
             <OnBreakList />
           </div>
+        </div>
+        
+        <div className="mt-8">
+            <OnShiftList />
         </div>
 
          <StatisticsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} />

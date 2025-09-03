@@ -15,6 +15,8 @@ import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getActivityLog } from '@/hooks/useTimeTracker';
+import OnShiftList from '@/components/dashboard/OnShiftList';
+import ShiftManager from '@/components/admin/ShiftManager';
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -128,6 +130,15 @@ export default function AdminPage() {
                 <StatCard title="Total Activities" value={stats.totalActivities} icon={<BarChart3 />} />
                 <StatCard title="Today's Breaks" value={stats.todayBreaks} icon={<Coffee />} />
                 <StatCard title="Today's Lunches" value={stats.todayLunches} icon={<Utensils />} />
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-6 mb-8">
+                <div className="lg:col-span-1">
+                    <ShiftManager />
+                </div>
+                <div className="lg:col-span-2">
+                     <OnShiftList />
+                </div>
             </div>
 
             <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">

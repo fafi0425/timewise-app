@@ -1,3 +1,4 @@
+
 export interface User {
   uid: string;
   name: string;
@@ -24,3 +25,5 @@ export interface UserState {
   breakStartTime: string | null;
   lunchStartTime: string | null;
 }
+
+export type Shift = 'morning' | 'mid' | 'night';
