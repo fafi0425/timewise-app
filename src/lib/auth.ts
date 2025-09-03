@@ -26,6 +26,8 @@ export const seedInitialData = () => {
       // Always reset to default on app load for a clean slate as requested.
       localStorage.setItem('users', JSON.stringify(defaultUsers));
       localStorage.removeItem('activityLog');
+      localStorage.removeItem('currentUser'); // <-- This is the new line to fix the issue
+      
       // Remove any stale user state
       Object.keys(localStorage).forEach(key => {
           if (key.startsWith('userState_')) {
@@ -143,7 +145,7 @@ export const updateUserShift = (userId: string, shift: Shift): void => {
     const users = getUsers();
     const userIndex = users.findIndex(u => u.uid === userId);
     
-    if (userIndex !== -_1) {
+    if (userIndex !== -1) {
         users[userIndex].shift = shift;
         localStorage.setItem('users', JSON.stringify(users));
     } else {
