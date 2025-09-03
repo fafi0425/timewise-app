@@ -22,7 +22,6 @@ export default function SignUpForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,20 +48,13 @@ export default function SignUpForm() {
     if (newUser) {
       toast({
         title: 'Registration Successful',
-        description: 'Your account has been created. Please check your email for verification.',
+        description: 'Your account has been created. Please proceed to login.',
       });
-      
-      const loggedInUser = await login(email, password);
-      if(loggedInUser) {
-        router.push('/dashboard');
-      } else {
-        router.push('/login');
-      }
-
+      router.push('/login');
     } else {
       toast({
         title: 'Registration Failed',
-        description: 'An account with this email may already exist.',
+        description: 'An account with this email may already exist. Please try a different email or log in.',
         variant: 'destructive',
       });
     }
