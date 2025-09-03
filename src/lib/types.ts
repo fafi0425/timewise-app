@@ -27,4 +27,4 @@ export interface UserState {
   lunchStartTime: string | null;
 }
 
-export type Shift = 'morning' | 'mid' | 'night';
+export type Shift = 'morning' | 'mid' | 'night' | 'custom';

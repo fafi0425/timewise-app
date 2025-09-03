@@ -35,16 +35,20 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             
             // Determine the actual current shift based on time
             let actualCurrentShift: Shift = 'morning';
-            const nightShiftEnd = SHIFTS.night.end; // 6
-            const nightShiftStart = SHIFTS.night.start; // 21
+            if (shiftFilter === 'custom') {
+                actualCurrentShift = 'custom';
+            } else {
+                const nightShiftEnd = SHIFTS.night.end!; // 6
+                const nightShiftStart = SHIFTS.night.start!; // 21
 
-            // Handle overnight shift logic carefully
-            if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
-                 actualCurrentShift = 'night';
-            } else if (currentHour >= SHIFTS.morning.start && currentHour < SHIFTS.morning.end) {
-                actualCurrentShift = 'morning';
-            } else if (currentHour >= SHIFTS.mid.start && currentHour < SHIFTS.mid.end) {
-                actualCurrentShift = 'mid';
+                // Handle overnight shift logic carefully
+                if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
+                     actualCurrentShift = 'night';
+                } else if (currentHour >= SHIFTS.morning.start! && currentHour < SHIFTS.morning.end!) {
+                    actualCurrentShift = 'morning';
+                } else if (currentHour >= SHIFTS.mid.start! && currentHour < SHIFTS.mid.end!) {
+                    actualCurrentShift = 'mid';
+                }
             }
             
             // Use the admin's filter if set, otherwise default to the actual current shift
@@ -56,6 +60,37 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             const rosterUsers: OnShiftUser[] = [];
             
             const usersInShift = allUsers.filter(user => user.shift === shiftToDisplay);
+
+            if (shiftToDisplay === 'custom') {
+                const customStart = localStorage.getItem('customShiftStart');
+                const customEnd = localStorage.getItem('customShiftEnd');
+                
+                if (customStart && customEnd) {
+                     const [startHour, startMinute] = customStart.split(':').map(Number);
+                     const [endHour, endMinute] = customEnd.split(':').map(Number);
+
+                     const startTime = new Date();
+                     startTime.setHours(startHour, startMinute, 0, 0);
+
+                     const endTime = new Date();
+                     endTime.setHours(endHour, endMinute, 0, 0);
+                     
+                     // simple check for now, doesn't handle overnight custom shifts
+                     if (now >= startTime && now <= endTime) {
+                         // Find all users who are logged in, regardless of their assigned shift
+                         const loggedInUsers = allUsers.filter(u => {
+                            const userLogsToday = logs.filter(l => l.uid === u.uid && l.date === todayStr);
+                            const latestLog = userLogsToday[0];
+                            return latestLog && latestLog.action !== 'Work Ended';
+                         });
+                         usersInShift.push(...loggedInUsers.filter(u => !usersInShift.find(us => us.uid === u.uid)));
+                     } else {
+                         // if outside custom shift hours, show no one
+                         usersInShift.length = 0;
+                     }
+                }
+            }
+
 
             usersInShift.forEach(user => {
                 const userLogsToday = logs.filter(l => l.uid === user.uid && l.date === todayStr);
@@ -122,7 +157,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                     <div className="space-y-3">
                         {onShiftUsers.length === 0 ? (
                             <div className="text-center py-10 text-muted-foreground">
-                                <p>No employees are assigned to this shift.</p>
+                                <p>No employees are assigned to or active in this shift.</p>
                             </div>
                         ) : (
                             onShiftUsers.map((u, index) => (
