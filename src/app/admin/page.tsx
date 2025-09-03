@@ -137,7 +137,7 @@ export default function AdminPage() {
                     <ShiftManager />
                 </div>
                 <div className="lg:col-span-2">
-                     <OnShiftList />
+                     <OnShiftList simpleStatus={true} />
                 </div>
             </div>
 
