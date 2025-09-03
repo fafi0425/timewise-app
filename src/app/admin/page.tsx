@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,7 +79,15 @@ export default function AdminPage() {
 
     const { toast } = useToast();
 
-    const refreshData = async () => {
+    const fetchOverbreaks = useCallback(async () => {
+        setIsLoadingOverbreaks(true);
+        const activityData: ActivityLog[] = getActivityLog();
+        const result = await getOverbreakAlertsAction(activityData);
+        setOverbreaks(result);
+        setIsLoadingOverbreaks(false);
+    }, []);
+
+    const refreshData = useCallback(async () => {
         setIsLoadingUsers(true);
         const allUsers = await getUsers();
         setUsers(allUsers);
@@ -99,19 +107,11 @@ export default function AdminPage() {
         });
 
         await fetchOverbreaks();
-    };
-
-    const fetchOverbreaks = async () => {
-        setIsLoadingOverbreaks(true);
-        const activityData: ActivityLog[] = getActivityLog();
-        const result = await getOverbreakAlertsAction(activityData);
-        setOverbreaks(result);
-        setIsLoadingOverbreaks(false);
-    };
+    }, [fetchOverbreaks]);
 
     useEffect(() => {
         refreshData();
-    }, []);
+    }, [refreshData]);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -125,32 +125,38 @@ export default function AdminPage() {
             return;
         }
         
-        const newUser = await addUser({
-            name: newUserName,
-            email: newUserEmail,
-            department: newUserDepartment,
-            role: newUserRole as any,
-            password: newUserPassword,
-            shift: newUserShift as Shift,
-        });
+        try {
+            const newUser = await addUser({
+                name: newUserName,
+                email: newUserEmail,
+                department: newUserDepartment,
+                role: newUserRole as any,
+                password: newUserPassword,
+                shift: newUserShift as Shift,
+            });
 
-        if (newUser) {
-            toast({ title: "Success", description: "User added successfully." });
-            setNewUserName('');
-            setNewUserEmail('');
-            setNewUserDepartment('');
-            setNewUserRole('');
-            setNewUserPassword('');
-            setNewUserShift('');
-            await refreshData();
-        } else {
-            toast({ title: "Error", description: "Could not add user. Email may already be in use.", variant: "destructive" });
+            if (newUser) {
+                toast({ title: "Success", description: "User added successfully." });
+                setNewUserName('');
+                setNewUserEmail('');
+                setNewUserDepartment('');
+                setNewUserRole('');
+                setNewUserPassword('');
+                setNewUserShift('');
+                await refreshData();
+            }
+        } catch (error: any) {
+            let description = "Could not add user.";
+            if (error.code === 'auth/email-already-in-use' || error.message.includes('auth/email-already-in-use')) {
+                description = "An account with this email already exists.";
+            }
+            toast({ title: "Error", description, variant: "destructive" });
         }
     };
 
     const handleDeleteUser = async (uid: string) => {
         await deleteUser(uid);
-        toast({ title: "Success", description: "User removed successfully." });
+        toast({ title: "Success", description: "User removed successfully. Note: Firebase Auth entry must be manually deleted from the Firebase Console." });
         await refreshData();
     };
 
@@ -535,7 +541,7 @@ export default function AdminPage() {
                                 <SelectItem value="Team Leader">Team Leader</SelectItem>
                                 <SelectItem value="HR">HR</SelectItem>
                                 <SelectItem value="Employee">Employee</SelectItem>
-                                <SelectItem value="Administrator">Administrator</SelectItem>
+                                <SelectItem value="Administrator">Administrator</S_electItem>
                             </SelectContent>
                         </Select>
                     </div>

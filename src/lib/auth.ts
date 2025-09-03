@@ -18,6 +18,8 @@ import {
     query,
     where
 } from 'firebase/firestore';
+import { getAllUsers as getAllUsersFlow } from '@/ai/flows/get-all-users';
+
 
 const defaultAdmin: User = {
   uid: 'admin001',
@@ -41,23 +43,15 @@ export const seedInitialData = async () => {
         delete adminDataForDb.password; 
         await setDoc(adminRef, adminDataForDb);
     }
-    
-    // Clear out local storage items that are no longer needed or should be reset on app start.
-    if (typeof window !== 'undefined') {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('activityLog');
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('userState_')) {
-                localStorage.removeItem(key);
-            }
-        });
-    }
 };
 
 export const authenticateUser = async (email: string, pass: string): Promise<User | null> => {
   // Special case for local admin login, which doesn't use Firebase Auth.
   if (email === defaultAdmin.email && pass === defaultAdmin.password) {
-    return defaultAdmin;
+    const adminDoc = await getDoc(doc(db, 'users', defaultAdmin.uid));
+    if (adminDoc.exists()) {
+        return { uid: adminDoc.id, ...adminDoc.data() } as User;
+    }
   }
   
   try {
@@ -70,8 +64,7 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
 
     if (!userDocSnap.exists()) {
         console.error("Authentication successful, but no user profile found in Firestore.");
-        // This can happen if a user was created in Auth but their Firestore document creation failed.
-        await signOut(auth); // Sign out the user to prevent a dangling session.
+        await signOut(auth);
         return null;
     }
 
@@ -87,12 +80,10 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
 
 export const getUsers = async (): Promise<User[]> => {
   try {
-    const usersCollection = collection(db, 'users');
-    const userSnapshot = await getDocs(usersCollection);
-    const userList = userSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
-    return userList;
+    const result = await getAllUsersFlow();
+    return result.users;
   } catch(e) {
-    console.error("Error fetching users from Firestore:", e);
+    console.error("Error fetching users via flow:", e);
     return [];
   }
 };
@@ -104,11 +95,9 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
     }
     
     try {
-        // Step 1: Create the user in Firebase Authentication
         const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password);
         const firebaseUser = userCredential.user;
         
-        // Optional: Send a verification email
         try {
           await sendEmailVerification(firebaseUser);
           console.log("Verification email sent.");
@@ -116,32 +105,25 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
           console.error("Failed to send verification email:", emailError);
         }
 
-        // Step 2: Create the user profile in Firestore
         const userForDb: Omit<User, 'password'> = { 
             ...newUser, 
             uid: firebaseUser.uid,
             shift: newUser.shift || 'none'
         };
-        // Ensure password is not stored in Firestore
         delete (userForDb as Partial<User>).password; 
         
         await setDoc(doc(db, "users", firebaseUser.uid), userForDb);
         
-        // Return the newly created user object (without password)
         return userForDb as User;
 
     } catch(e: any) {
         console.error("Error creating user in Firebase:", e);
-        // The error could be 'auth/email-already-in-use', which is useful for the UI.
         throw e;
     }
 };
 
 export const deleteUser = async (uid: string): Promise<void> => {
-    // Note: Deleting from Firebase Auth requires admin privileges and is typically done server-side.
-    // For this client-side app, we will just delete from the Firestore 'users' collection.
-    // This prevents them from being loaded or logging in, but the auth entry will persist until manually deleted in console.
-    console.warn(`Deleting user ${uid} from Firestore. Auth entry will remain.`);
+    console.warn(`Deleting user ${uid} from Firestore. Auth entry must be deleted from Firebase Console.`);
     try {
       await deleteDoc(doc(db, "users", uid));
     } catch(e) {
@@ -152,8 +134,8 @@ export const deleteUser = async (uid: string): Promise<void> => {
 export const updateUser = async (updatedUser: User): Promise<void> => {
     const userRef = doc(db, 'users', updatedUser.uid);
     const userDataToUpdate: Partial<User> = { ...updatedUser };
-    delete userDataToUpdate.uid; // Don't try to update the ID field
-    delete userDataToUpdate.password; // Never store/update password
+    delete userDataToUpdate.uid; 
+    delete userDataToUpdate.password;
 
     await updateDoc(userRef, userDataToUpdate);
 };
