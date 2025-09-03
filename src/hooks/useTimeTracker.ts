@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import type { UserState, ActivityLog } from '@/lib/types';
+import type { UserState, ActivityLog, User } from '@/lib/types';
 import { useToast } from './use-toast';
 
 const BREAK_TIME_LIMIT = 15 * 60; // 15 minutes in seconds
@@ -19,6 +19,21 @@ const saveActivityLog = (log: ActivityLog[]) => {
     const limitedLog = log.slice(0, ACTIVITY_LOG_LIMIT);
     localStorage.setItem('activityLog', JSON.stringify(limitedLog));
 }
+
+export const endWorkSession = (sessionUser: User) => {
+    const newLog: ActivityLog = {
+      id: `log_${Date.now()}_${sessionUser.uid}`,
+      uid: sessionUser.uid,
+      employeeName: sessionUser.name,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      action: 'Work Ended',
+      duration: null,
+    };
+    const allLogs = getActivityLog();
+    const updatedLogs = [newLog, ...allLogs];
+    saveActivityLog(updatedLogs);
+  };
 
 export default function useTimeTracker() {
   const { user } = useAuth();

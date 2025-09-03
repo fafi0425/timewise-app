@@ -5,6 +5,7 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
 import { authenticateUser, seedInitialData, signOutUser } from '@/lib/auth';
+import { endWorkSession } from '@/hooks/useTimeTracker';
 
 interface AuthContextType {
   user: User | null;
@@ -60,6 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    if(user){
+       endWorkSession(user);
+    }
     try {
         await signOutUser();
     } catch (error) {

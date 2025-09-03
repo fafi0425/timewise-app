@@ -35,8 +35,12 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             
             // Determine the actual current shift based on time
             let actualCurrentShift: Shift = 'morning';
-            if (SHIFTS.night.start <= currentHour || currentHour < SHIFTS.night.end) {
-                actualCurrentShift = 'night';
+            const nightShiftEnd = SHIFTS.night.end; // 6
+            const nightShiftStart = SHIFTS.night.start; // 21
+
+            // Handle overnight shift logic carefully
+            if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
+                 actualCurrentShift = 'night';
             } else if (currentHour >= SHIFTS.morning.start && currentHour < SHIFTS.morning.end) {
                 actualCurrentShift = 'morning';
             } else if (currentHour >= SHIFTS.mid.start && currentHour < SHIFTS.mid.end) {
@@ -55,22 +59,33 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
 
             usersInShift.forEach(user => {
                 const userLogsToday = logs.filter(l => l.uid === user.uid && l.date === todayStr);
-                const hasStartedWork = userLogsToday.some(l => l.action === 'Work Started');
+                const latestLog = userLogsToday[0]; // Logs are prepended, so first one is the latest
 
-                if (hasStartedWork) {
-                    const latestLog = userLogsToday[0]; // Logs are prepended
-                    rosterUsers.push({
-                        name: user.name,
-                        department: user.department,
-                        latestAction: latestLog.action,
-                        latestActionTime: latestLog.time,
-                    });
-                } else {
-                    rosterUsers.push({
+                // If user has no logs today, they are logged out
+                if (!latestLog) {
+                     rosterUsers.push({
                         name: user.name,
                         department: user.department,
                         latestAction: 'Logged Out',
                         latestActionTime: '',
+                    });
+                    return;
+                }
+
+                // If latest action is 'Work Ended', they are logged out
+                if (latestLog.action === 'Work Ended') {
+                    rosterUsers.push({
+                        name: user.name,
+                        department: user.department,
+                        latestAction: 'Logged Out',
+                        latestActionTime: latestLog.time,
+                    });
+                } else {
+                     rosterUsers.push({
+                        name: user.name,
+                        department: user.department,
+                        latestAction: latestLog.action,
+                        latestActionTime: latestLog.time,
                     });
                 }
             });

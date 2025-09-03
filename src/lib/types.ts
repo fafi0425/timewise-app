@@ -15,7 +15,7 @@ export interface ActivityLog {
   employeeName: string;
   date: string;
   time: string;
-  action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In';
+  action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In' | 'Work Ended';
   duration: number | null;
 }
 
