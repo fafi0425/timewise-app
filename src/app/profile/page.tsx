@@ -69,7 +69,6 @@ export default function ProfilePage() {
                                 <CardTitle className="font-headline text-xl flex items-center"><UserIcon className="mr-2 h-5 w-5 text-primary" /> User Information</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                               <InfoRow icon={<Mail />} label="Email" value={user.email} />
                                <InfoRow icon={<Building />} label="Department" value={user.department} />
                                <InfoRow icon={<Briefcase />} label="Role" value={user.role} />
                                <InfoRow icon={<Clock />} label="Shift" value={userShift} />
