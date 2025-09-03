@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,24 +17,41 @@ export default function OnBreakList() {
 
   useEffect(() => {
     const updateList = () => {
-        const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+        const allUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
         const onBreak: OnBreakUser[] = [];
-        
-        users.forEach(user => {
-            const state: Partial<UserState> = JSON.parse(localStorage.getItem(`userState_${user.email}`) || '{}');
-            if (state.currentState === 'break' && state.breakStartTime) {
-                onBreak.push({ name: user.name, department: user.department, type: 'break', startTime: state.breakStartTime });
+
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('userState_')) {
+                try {
+                    const state: Partial<UserState> = JSON.parse(localStorage.getItem(key) || '{}');
+                    const email = key.replace('userState_', '');
+                    const user = allUsers.find(u => u.email === email);
+
+                    if (user) {
+                         if (state.currentState === 'break' && state.breakStartTime) {
+                            onBreak.push({ name: user.name, department: user.department, type: 'break', startTime: state.breakStartTime });
+                        }
+                        if (state.currentState === 'lunch' && state.lunchStartTime) {
+                            onBreak.push({ name: user.name, department: user.department, type: 'lunch', startTime: state.lunchStartTime });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to parse user state from localStorage', e);
+                }
             }
-            if (state.currentState === 'lunch' && state.lunchStartTime) {
-                onBreak.push({ name: user.name, department: user.department, type: 'lunch', startTime: state.lunchStartTime });
-            }
-        });
+        }
         setOnBreakUsers(onBreak);
     };
     
     updateList();
     const interval = setInterval(updateList, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
+    window.addEventListener('storage', updateList); // Also update when storage changes
+    
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('storage', updateList);
+    };
   }, []);
 
   return (
