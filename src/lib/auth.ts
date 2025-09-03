@@ -59,13 +59,15 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     }
     return null;
   } catch (error: any) {
-    // If Firebase auth fails for any reason, try to authenticate against local storage users.
+    // If Firebase auth fails (e.g., user not in Firebase), try to authenticate against local storage users.
     // This is useful for the seeded default users.
-    console.log("Firebase auth failed, attempting local auth. Reason:", error.code);
-    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-    const localUser = users.find(u => u.email === email && u.password === pass);
-    if (localUser) {
-        return localUser;
+    if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        console.log("Firebase auth failed, attempting local auth. Reason:", error.code);
+        const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+        const localUser = users.find(u => u.email === email && u.password === pass);
+        if (localUser) {
+            return localUser;
+        }
     }
     
     // If it's another type of error, or local auth also fails, log it and return null.
