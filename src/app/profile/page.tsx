@@ -51,7 +51,6 @@ export default function ProfilePage() {
                             <CardContent className="pt-6">
                                 <div className="flex flex-col items-center text-center">
                                     <Avatar className="w-24 h-24 mb-4 border-4 border-primary">
-                                        <AvatarImage src={`https://i.pravatar.cc/150?u=${user.email}`} />
                                         <AvatarFallback className="text-3xl bg-secondary text-secondary-foreground">
                                             {user.name.split(' ').map(n => n[0]).join('')}
                                         </AvatarFallback>
