@@ -4,7 +4,7 @@
  *
  * - assignUserShift - A function that handles the business logic for assigning a shift.
  * - AssignUserShiftInput - The input type for the assignUserShift function.
- * - AssignUserShiftOutput - The return type for the assignUserShift function.
+ * - AssignUserShiftOutput - The return type for the assignUsershift function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -12,13 +12,13 @@ import { z } from 'genkit';
 import { updateUserShift } from '@/lib/auth';
 import type { Shift } from '@/lib/types';
 
-export const AssignUserShiftInputSchema = z.object({
+const AssignUserShiftInputSchema = z.object({
   userId: z.string().describe('The unique identifier of the user.'),
   shift: z.enum(['morning', 'mid', 'night']).describe('The shift to assign to the user.'),
 });
 export type AssignUserShiftInput = z.infer<typeof AssignUserShiftInputSchema>;
 
-export const AssignUserShiftOutputSchema = z.object({
+const AssignUserShiftOutputSchema = z.object({
   success: z.boolean().describe('Whether the shift assignment was successful.'),
   message: z.string().describe('A message indicating the result of the operation.'),
 });
