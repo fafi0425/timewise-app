@@ -18,21 +18,20 @@ const defaultUsers: User[] = [
     department: 'Admin',
     role: 'Administrator',
     shift: 'morning',
-  },
-  {
-    uid: 'user001',
-    name: 'John Doe',
-    email: 'user123@gmail.com',
-    password: 'terra123',
-    department: 'Dealing',
-    role: 'Employee',
-    shift: 'morning',
-  },
+  }
 ];
 
 export const seedInitialData = () => {
-  if (typeof window !== 'undefined' && !localStorage.getItem('users')) {
-    localStorage.setItem('users', JSON.stringify(defaultUsers));
+  if (typeof window !== 'undefined') {
+      // Always reset to default on app load for a clean slate as requested.
+      localStorage.setItem('users', JSON.stringify(defaultUsers));
+      localStorage.removeItem('activityLog');
+      // Remove any stale user state
+      Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('userState_')) {
+              localStorage.removeItem(key);
+          }
+      });
   }
 };
 
@@ -47,21 +46,25 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     const firebaseUser = userCredential.user;
-    const user = localUsers.find(u => u.email === email);
-    if (user) {
-        return { ...user, uid: firebaseUser.uid };
+    // Check local storage for a user that was maybe created via admin panel
+    const localUser = localUsers.find(u => u.email === email);
+    if(localUser){
+        return localUser;
     }
     // Fallback for a user that exists in Firebase but somehow not locally.
+    // This can happen if local storage is cleared but firebase auth is not.
     return {
         uid: firebaseUser.uid,
         email: firebaseUser.email || email,
-        name: firebaseUser.displayName || email,
+        name: firebaseUser.displayName || email.split('@')[0],
         department: 'CS/KYC',
         role: 'Employee',
         shift: 'morning',
     }
   } catch (error: any) {
     console.error("Firebase Authentication failed:", error);
+    // This is where we might have a user who is only in local storage (like the default admin)
+    // but the initial check failed (e.g. wrong password). We return null.
     return null;
   }
 };
@@ -140,7 +143,7 @@ export const updateUserShift = (userId: string, shift: Shift): void => {
     const users = getUsers();
     const userIndex = users.findIndex(u => u.uid === userId);
     
-    if (userIndex !== -1) {
+    if (userIndex !== -_1) {
         users[userIndex].shift = shift;
         localStorage.setItem('users', JSON.stringify(users));
     } else {
