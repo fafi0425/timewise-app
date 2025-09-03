@@ -65,16 +65,15 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     const firebaseUser = userCredential.user;
 
     // Fetch user profile from Firestore
-    const userQuery = query(collection(db, 'users'), where('email', '==', email));
-    const querySnapshot = await getDocs(userQuery);
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
 
-    if (querySnapshot.empty) {
+    if (!userDocSnap.exists()) {
         console.error("Authentication successful, but no user profile found in Firestore.");
         return null;
     }
 
-    const userDoc = querySnapshot.docs[0];
-    const userProfile = { uid: userDoc.id, ...userDoc.data() } as User;
+    const userProfile = { uid: userDocSnap.id, ...userDocSnap.data() } as User;
     return userProfile;
 
   } catch (error: any) {
