@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers, addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
+import { addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
 import { getOverbreakAlertsAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle } from 'lucide-react';
@@ -31,6 +31,7 @@ import { assignUserShift } from '@/ai/flows/assign-user-shift';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { getAllUsers } from '@/ai/flows/get-all-users';
 
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
@@ -89,9 +90,20 @@ export default function AdminPage() {
 
     const refreshData = useCallback(async () => {
         setIsLoadingUsers(true);
-        const allUsers = await getUsers();
-        setUsers(allUsers);
-        setIsLoadingUsers(false);
+        try {
+            const result = await getAllUsers();
+            if (result.success && result.users) {
+                setUsers(result.users);
+            } else {
+                toast({ title: "Error", description: result.message, variant: "destructive" });
+                setUsers([]);
+            }
+        } catch (error: any) {
+             toast({ title: "Error fetching users", description: error.message, variant: "destructive" });
+             setUsers([]);
+        } finally {
+            setIsLoadingUsers(false);
+        }
 
         const activityData: ActivityLog[] = getActivityLog();
         setAllActivity(activityData);
@@ -99,15 +111,17 @@ export default function AdminPage() {
         const today = new Date().toLocaleDateString();
         const todayActivities = activityData.filter(a => a.date === today);
 
-        setStats({
-            totalEmployees: allUsers.length,
+        setStats(prev => ({
+            ...prev,
+            totalEmployees: users.length, // this might be one render behind, but will be updated.
             totalActivities: activityData.length,
             todayBreaks: todayActivities.filter(a => a.action === 'Break Out').length,
             todayLunches: todayActivities.filter(a => a.action === 'Lunch Out').length,
-        });
+        }));
+
 
         await fetchOverbreaks();
-    }, [fetchOverbreaks]);
+    }, [fetchOverbreaks, toast, users.length]);
 
     useEffect(() => {
         refreshData();
@@ -541,7 +555,7 @@ export default function AdminPage() {
                                 <SelectItem value="Team Leader">Team Leader</SelectItem>
                                 <SelectItem value="HR">HR</SelectItem>
                                 <SelectItem value="Employee">Employee</SelectItem>
-                                <SelectItem value="Administrator">Administrator</S_electItem>
+                                <SelectItem value="Administrator">Administrator</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -604,3 +618,4 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
+}

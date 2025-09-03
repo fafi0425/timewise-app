@@ -74,20 +74,6 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
   }
 };
 
-
-export const getUsers = async (): Promise<User[]> => {
-    try {
-        const usersCol = collection(db, 'users');
-        const userSnapshot = await getDocs(usersCol);
-        const userList = userSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[];
-        return userList;
-    } catch (e) {
-        console.error("Error fetching users directly from Firestore:", e);
-        // This will now throw the permission error up to the UI, which is more informative.
-        throw e;
-    }
-};
-
 export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> => {
     if (!newUser.email || !newUser.password) {
         console.error("Email and password are required to add a user.");
@@ -154,3 +140,5 @@ export const signOutUser = async () => {
         console.error("Error signing out:", error);
     }
 };
+
+    
