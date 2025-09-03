@@ -29,6 +29,9 @@ import {
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { assignUserShift } from '@/ai/flows/assign-user-shift';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
@@ -65,7 +68,6 @@ export default function AdminPage() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [selectedShift, setSelectedShift] = useState<Shift | ''>('');
     
-    // State for data preview
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>([]);
     const [filterFromDate, setFilterFromDate] = useState('');
@@ -178,10 +180,10 @@ export default function AdminPage() {
         setSelectedShift('');
     };
 
-    const handlePreviewData = () => {
+    const filterLogs = () => {
         if (!filterFromDate || !filterToDate) {
             toast({ title: "Error", description: "Please select both a start and end date.", variant: "destructive" });
-            return;
+            return false;
         }
         
         const from = new Date(filterFromDate);
@@ -196,8 +198,64 @@ export default function AdminPage() {
             return isDateInRange && isEmployeeMatch && isBreakOrLunch && log.duration;
         });
 
+        if (filtered.length === 0) {
+            toast({ title: "No Data", description: "No data found for the selected criteria." });
+            return false;
+        }
+
         setFilteredLogs(filtered);
-        setIsPreviewModalOpen(true);
+        return true;
+    }
+
+    const handlePreviewData = () => {
+        if (filterLogs()) {
+            setIsPreviewModalOpen(true);
+        }
+    };
+
+    const handleExportExcel = () => {
+        if (filterLogs()) {
+             const dataToExport = filteredLogs.map(log => ({
+                'Employee': log.employeeName,
+                'Date': log.date,
+                'Time': log.time,
+                'Type': log.action.replace(' In', ''),
+                'Duration (min)': log.duration
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Break Logs");
+
+            XLSX.writeFile(workbook, `Break_Logs_${filterFromDate}_to_${filterToDate}.xlsx`);
+        }
+    };
+
+    const handleExportPdf = () => {
+        if (filterLogs()) {
+            const doc = new jsPDF();
+            const tableColumn = ["Employee", "Date", "Time", "Type", "Duration (min)"];
+            const tableRows: (string|number|null)[][] = [];
+
+            filteredLogs.forEach(log => {
+                const logData = [
+                    log.employeeName,
+                    log.date,
+                    log.time,
+                    log.action.replace(' In', ''),
+                    log.duration,
+                ];
+                tableRows.push(logData);
+            });
+
+            (doc as any).autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: 20,
+            });
+            doc.text("Break Logs", 14, 15);
+            doc.save(`Break_Logs_${filterFromDate}_to_${filterToDate}.pdf`);
+        }
     };
 
     return (
@@ -248,8 +306,8 @@ export default function AdminPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-4">
-                    <Button variant="secondary" disabled><FileDown className="mr-2 h-4 w-4" /> Export to Excel</Button>
-                    <Button variant="destructive" disabled><FileDown className="mr-2 h-4 w-4" /> Export to PDF</Button>
+                    <Button variant="secondary" onClick={handleExportExcel}><FileDown className="mr-2 h-4 w-4" /> Export to Excel</Button>
+                    <Button variant="destructive" onClick={handleExportPdf}><FileDown className="mr-2 h-4 w-4" /> Export to PDF</Button>
                     <Button onClick={handlePreviewData}><Eye className="mr-2 h-4 w-4" /> Preview Data</Button>
                 </div>
             </Card>
