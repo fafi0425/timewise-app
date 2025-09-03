@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getOverbreakAlertsAction } from '@/lib/actions';
+import { getAllUsersAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
@@ -82,8 +82,13 @@ export default function AdminPage() {
     const fetchOverbreaks = useCallback(async () => {
         setIsLoadingOverbreaks(true);
         const activityData: ActivityLog[] = getActivityLog();
-        const result = await getOverbreakAlertsAction(activityData);
-        setOverbreaks(result);
+        // This is client-side, so we can't use the AI flow directly here yet.
+        // For now, we'll use simple filtering.
+        const overbreakData = activityData.filter(log => 
+            (log.action === 'Break In' && (log.duration || 0) > 15) ||
+            (log.action === 'Lunch In' && (log.duration || 0) > 60)
+        );
+        setOverbreaks(overbreakData.map(o => ({...o, id: `overbreak_${Math.random()}`})));
         setIsLoadingOverbreaks(false);
     }, []);
 
@@ -93,7 +98,7 @@ export default function AdminPage() {
             const result = await getAllUsersAction();
             if (result.success && result.users) {
                 setUsers(result.users);
-                 setStats(prev => ({ ...prev, totalEmployees: result.users?.length || 0 }));
+                setStats(prev => ({ ...prev, totalEmployees: result.users?.length || 0 }));
             } else {
                 toast({ title: "Error", description: result.message, variant: "destructive" });
                 setUsers([]);
