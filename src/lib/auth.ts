@@ -5,7 +5,8 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   deleteUser as deleteFirebaseUser,
-  signOut
+  signOut,
+  sendEmailVerification
 } from 'firebase/auth';
 
 const defaultUsers: User[] = [
@@ -89,6 +90,16 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password!);
         const firebaseUser = userCredential.user;
+        
+        // Send verification email
+        try {
+          await sendEmailVerification(firebaseUser);
+          console.log("Verification email sent.");
+        } catch (emailError) {
+          console.error("Failed to send verification email:", emailError);
+          // We don't block registration if email fails, just log it.
+        }
+
         const userWithId: User = { ...newUser, uid: firebaseUser.uid };
         users.push(userWithId);
         localStorage.setItem('users', JSON.stringify(users));
