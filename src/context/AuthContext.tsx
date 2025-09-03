@@ -24,15 +24,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
   
   useEffect(() => {
-    seedInitialData();
-
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      const activeUser = JSON.parse(storedUser);
-      setUser(activeUser);
-    }
-    setLoading(false);
-
+    const initializeApp = async () => {
+        await seedInitialData();
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+          const activeUser = JSON.parse(storedUser);
+          setUser(activeUser);
+        }
+        setLoading(false);
+    };
+    initializeApp();
   }, []);
 
   useEffect(() => {

@@ -38,7 +38,6 @@ export default function SignUpForm() {
       return;
     }
     
-    // Default role and department for self-registered users
     const newUser = await addUser({
         name,
         email,
@@ -50,10 +49,9 @@ export default function SignUpForm() {
     if (newUser) {
       toast({
         title: 'Registration Successful',
-        description: 'Your account has been created.',
+        description: 'Your account has been created. Please check your email for verification.',
       });
       
-      // Automatically log the user in
       const loggedInUser = await login(email, password);
       if(loggedInUser) {
         router.push('/dashboard');

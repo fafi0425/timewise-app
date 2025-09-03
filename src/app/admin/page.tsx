@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getUsers, addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
 import { getOverbreakAlertsAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
-import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock } from 'lucide-react';
+import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -52,6 +52,7 @@ const StatCard = ({ title, value, icon }: { title: string; value: string | numbe
 export default function AdminPage() {
     const [stats, setStats] = useState({ totalEmployees: 0, totalActivities: 0, todayBreaks: 0, todayLunches: 0 });
     const [users, setUsers] = useState<User[]>([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
     const [overbreaks, setOverbreaks] = useState<any[]>([]);
     const [isLoadingOverbreaks, setIsLoadingOverbreaks] = useState(false);
@@ -79,8 +80,10 @@ export default function AdminPage() {
     const { toast } = useToast();
 
     const refreshData = async () => {
-        const allUsers = getUsers();
+        setIsLoadingUsers(true);
+        const allUsers = await getUsers();
         setUsers(allUsers);
+        setIsLoadingUsers(false);
 
         const activityData: ActivityLog[] = getActivityLog();
         setAllActivity(activityData);
@@ -162,10 +165,10 @@ export default function AdminPage() {
         setIsUserEditModalOpen(true);
     };
 
-    const handleUpdateUser = () => {
+    const handleUpdateUser = async () => {
         if (editingUser) {
             try {
-                updateUser(editingUser);
+                await updateUser(editingUser);
                 toast({ title: "Success", description: "User details updated." });
                 refreshData();
                 setIsUserEditModalOpen(false);
@@ -186,7 +189,7 @@ export default function AdminPage() {
 
         if (result.success && result.userId && result.shift) {
             try {
-                updateUserShift(result.userId, result.shift);
+                await updateUserShift(result.userId, result.shift);
                 toast({ title: "Success", description: result.message });
                 await refreshData();
             } catch (error: any) {
@@ -385,6 +388,11 @@ export default function AdminPage() {
                      <div>
                         <h4 className="font-medium text-card-foreground mb-4">Registered Users</h4>
                         <ScrollArea className="h-72 pr-4">
+                        {isLoadingUsers ? (
+                            <div className="flex justify-center items-center h-full">
+                                <LoaderCircle className="animate-spin text-primary" />
+                            </div>
+                        ) : (
                         <div className="space-y-2">
                            {users.map(user => (
                                <div key={user.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
@@ -394,7 +402,7 @@ export default function AdminPage() {
                                         <div className="text-xs text-muted-foreground mt-1 space-x-1">
                                             <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
                                             <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
-                                            {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift]?.name}</span>}
+                                            {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none'>]?.name}</span>}
                                         </div>
                                    </div>
                                     <div className="flex items-center gap-1">
@@ -404,13 +412,14 @@ export default function AdminPage() {
                                      <Button variant="outline" size="icon" onClick={() => openEditUserModal(user)} className="text-primary hover:bg-primary/10">
                                         <Edit2 className="h-4 w-4" />
                                      </Button>
-                                     <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10">
+                                     <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10" disabled={user.role === 'Administrator'}>
                                          <Trash2 className="h-4 w-4" />
                                      </Button>
                                     </div>
                                </div>
                            ))}
                         </div>
+                        )}
                         </ScrollArea>
                     </div>
                  </div>
@@ -589,8 +598,3 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
-
-    
-
-
-
