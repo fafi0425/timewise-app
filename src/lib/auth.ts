@@ -130,7 +130,6 @@ export const deleteUser = async (uid: string): Promise<void> => {
 };
 
 export const updateUserShift = (userId: string, shift: Shift): void => {
-    // Re-fetch users from localStorage to ensure we have the latest list
     const users = getUsers();
     const userIndex = users.findIndex(u => u.uid === userId);
     
@@ -138,8 +137,6 @@ export const updateUserShift = (userId: string, shift: Shift): void => {
         users[userIndex].shift = shift;
         localStorage.setItem('users', JSON.stringify(users));
     } else {
-        // This will now be much less likely to happen.
-        console.error(`Failed to update shift. User with ID ${userId} not found.`);
         throw new Error('User not found');
     }
 };

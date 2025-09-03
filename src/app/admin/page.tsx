@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers, addUser, deleteUser } from '@/lib/auth';
+import { getUsers, addUser, deleteUser, updateUserShift } from '@/lib/auth';
 import { getOverbreakAlertsAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit } from 'lucide-react';
@@ -153,9 +153,15 @@ export default function AdminPage() {
 
         const result = await assignUserShift({ userId: selectedUser.uid, shift: selectedShift });
 
-        if (result.success) {
-            toast({ title: "Success", description: result.message });
-            await refreshData();
+        if (result.success && result.userId && result.shift) {
+            try {
+                // The AI flow now returns the data, and we perform the client-side update here.
+                updateUserShift(result.userId, result.shift);
+                toast({ title: "Success", description: result.message });
+                await refreshData();
+            } catch (error: any) {
+                 toast({ title: "Error", description: error.message, variant: "destructive" });
+            }
         } else {
             toast({ title: "Error", description: result.message, variant: "destructive" });
         }
