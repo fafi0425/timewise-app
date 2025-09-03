@@ -1,4 +1,3 @@
-
 import type { User, Shift } from './types';
 import { auth, db } from './firebase';
 import { 
