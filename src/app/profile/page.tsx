@@ -58,7 +58,6 @@ export default function ProfilePage() {
                                         </AvatarFallback>
                                     </Avatar>
                                     <h3 className="text-2xl font-bold text-card-foreground font-headline">{user.name}</h3>
-                                    <p className="text-muted-foreground">{user.email}</p>
                                 </div>
                             </CardContent>
                         </Card>
