@@ -13,9 +13,7 @@ import {
     getDoc, 
     getDocs, 
     deleteDoc, 
-    updateDoc,
-    query,
-    where
+    updateDoc
 } from 'firebase/firestore';
 import { getAllUsers as getAllUsersFlow } from '@/ai/flows/get-all-users';
 
@@ -80,10 +78,14 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
 export const getUsers = async (): Promise<User[]> => {
   try {
     const result = await getAllUsersFlow();
-    return result.users;
-  } catch(e) {
-    console.error("Error fetching users via flow:", e);
+    if(result.success && result.users) {
+        return result.users as User[];
+    }
+    console.error("Failed to get users from flow:", result.message);
     return [];
+  } catch(e) {
+    console.error("Error fetching users via Genkit flow:", e);
+    throw e;
   }
 };
 
