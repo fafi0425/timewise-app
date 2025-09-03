@@ -4,12 +4,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Clock, Crown, LogOut, User as UserIcon } from 'lucide-react';
+import { Clock, Crown, LogOut, User as UserIcon, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
   const [time, setTime] = useState('');
   const { user, logout } = useAuth();
+  const pathname = usePathname();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -44,12 +46,21 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
               <span className="font-code">{time}</span>
             </div>
              {!isAdmin && (
-               <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2">
-                <Link href="/profile">
-                  <UserIcon className="mr-2 h-4 w-4" />
-                  My Profile
-                </Link>
-              </Button>
+                pathname === '/profile' ? (
+                    <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2">
+                        <Link href="/dashboard">
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            Dashboard
+                        </Link>
+                    </Button>
+                ) : (
+                    <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2">
+                        <Link href="/profile">
+                            <UserIcon className="mr-2 h-4 w-4" />
+                            My Profile
+                        </Link>
+                    </Button>
+                )
             )}
             <Button
               onClick={logout}

@@ -7,12 +7,10 @@ import AuthCheck from '@/components/shared/AuthCheck';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { List, Mail, Building, Briefcase, Clock, User as UserIcon, LayoutDashboard } from 'lucide-react';
+import { List, Mail, Building, Briefcase, Clock, User as UserIcon } from 'lucide-react';
 import { getActivityLog } from '@/hooks/useTimeTracker';
 import type { ActivityLog } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 const InfoRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | undefined }) => (
     <div className="flex items-center text-sm">
@@ -69,6 +67,7 @@ export default function ProfilePage() {
                                 <CardTitle className="font-headline text-xl flex items-center"><UserIcon className="mr-2 h-5 w-5 text-primary" /> User Information</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                               <InfoRow icon={<Mail />} label="Email" value={user.email} />
                                <InfoRow icon={<Building />} label="Department" value={user.department} />
                                <InfoRow icon={<Briefcase />} label="Role" value={user.role} />
                                <InfoRow icon={<Clock />} label="Shift" value={userShift} />
@@ -97,12 +96,6 @@ export default function ProfilePage() {
                         </div>
                     </CardContent>
                 </Card>
-
-                <div className="mt-8 text-center">
-                    <Button asChild>
-                        <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> Go to Dashboard</Link>
-                    </Button>
-                </div>
             </main>
         </AuthCheck>
     );
