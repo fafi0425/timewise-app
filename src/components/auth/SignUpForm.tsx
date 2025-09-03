@@ -37,28 +37,35 @@ export default function SignUpForm() {
       return;
     }
     
-    const newUser = await addUser({
-        name,
-        email,
-        password,
-        department, 
-        role: 'Employee'
-    });
+    try {
+      const newUser = await addUser({
+          name,
+          email,
+          password,
+          department, 
+          role: 'Employee'
+      });
 
-    if (newUser) {
-      toast({
-        title: 'Registration Successful',
-        description: 'Your account has been created. Please proceed to login.',
-      });
-      router.push('/login');
-    } else {
-      toast({
-        title: 'Registration Failed',
-        description: 'An account with this email may already exist. Please try a different email or log in.',
-        variant: 'destructive',
-      });
+      if (newUser) {
+        toast({
+          title: 'Registration Successful',
+          description: 'Your account has been created. Please proceed to login.',
+        });
+        router.push('/login');
+      }
+    } catch (error: any) {
+        let description = 'An unknown error occurred during registration.';
+        if (error.code === 'auth/email-already-in-use') {
+            description = 'An account with this email already exists. Please try a different email or log in.';
+        }
+        toast({
+          title: 'Registration Failed',
+          description: description,
+          variant: 'destructive',
+        });
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
