@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { List, Mail, Building, Briefcase, Clock, User as UserIcon, LayoutDashboard } from 'lucide-react';
 import { getActivityLog } from '@/hooks/useTimeTracker';
@@ -43,13 +43,8 @@ export default function ProfilePage() {
             <AppHeader />
             <main className="max-w-4xl mx-auto px-6 py-12">
                 <div className="text-center mb-10">
-                    <div className="flex justify-center items-center gap-4 mb-2">
-                        <h2 className="text-4xl font-bold text-white font-headline">My Profile</h2>
-                        <Button asChild>
-                           <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> Go to Dashboard</Link>
-                        </Button>
-                    </div>
-                    <p className="text-lg text-foreground">View your account details and recent activity.</p>
+                    <h2 className="text-4xl font-bold text-white font-headline">My Profile</h2>
+                    <p className="text-lg text-foreground mt-2">View your account details and recent activity.</p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-8">
@@ -104,6 +99,12 @@ export default function ProfilePage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                <div className="mt-8 text-center">
+                    <Button asChild>
+                        <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> Go to Dashboard</Link>
+                    </Button>
+                </div>
             </main>
         </AuthCheck>
     );
