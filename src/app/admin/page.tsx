@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
-import { getOverbreakAlertsAction, getAllUsersAction } from '@/lib/actions';
+import { getAllUsersAction, getOverbreakAlertsAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
