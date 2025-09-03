@@ -2,9 +2,9 @@
 'use server';
 /**
  * @fileOverview A server-side function to handle retrieving all users from Firestore using the Admin SDK.
+ * This file is NOT a Genkit flow, but a standard server function that will be converted into a Next.js Server Action.
  *
  * - getAllUsers - A function that fetches all user documents with admin privileges.
- * - GetAllUsersOutput - The return type for the getAllUsers function.
  */
 
 import { z } from 'genkit';
@@ -20,12 +20,10 @@ const serviceAccount = {
 };
 
 // Initialize the Firebase Admin app if it's not already initialized.
-// This is the correct way to ensure it only happens once.
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: "timewise-8ivr2",
     });
     console.log("Firebase Admin SDK initialized successfully.");
   } catch (error: any) {
@@ -35,14 +33,9 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-const GetAllUsersOutputSchema = z.object({
-  success: z.boolean().describe('Whether the user retrieval was successful.'),
-  message: z.string().describe('A message indicating the result of the operation.'),
-  users: z.array(z.any()).optional().describe('An array of user objects.'),
-});
-export type GetAllUsersOutput = z.infer<typeof GetAllUsersOutputSchema>;
-
-export async function getAllUsers(): Promise<GetAllUsersOutput> {
+// This function is intended to be used as a Server Action.
+// It will be moved to `lib/actions.ts` to formalize this pattern.
+export async function getAllUsers(): Promise<{ success: boolean; message: string; users: User[] }> {
   try {
     const usersCol = db.collection('users');
     const userSnapshot = await usersCol.get();

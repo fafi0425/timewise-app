@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
-import { getOverbreakAlertsAction } from '@/lib/actions';
+import { getOverbreakAlertsAction, getAllUsersAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
@@ -31,7 +31,6 @@ import { assignUserShift } from '@/ai/flows/assign-user-shift';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { getAllUsers } from '@/ai/flows/get-all-users';
 
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
@@ -91,7 +90,7 @@ export default function AdminPage() {
     const refreshData = useCallback(async () => {
         setIsLoadingUsers(true);
         try {
-            const result = await getAllUsers();
+            const result = await getAllUsersAction();
             if (result.success && result.users) {
                 setUsers(result.users);
             } else {

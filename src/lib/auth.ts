@@ -140,5 +140,3 @@ export const signOutUser = async () => {
         console.error("Error signing out:", error);
     }
 };
-
-    
