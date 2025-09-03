@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { assignUserShift } from '@/ai/flows/assign-user-shift';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
@@ -63,6 +64,13 @@ export default function AdminPage() {
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [selectedShift, setSelectedShift] = useState<Shift | ''>('');
+    
+    // State for data preview
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+    const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>([]);
+    const [filterFromDate, setFilterFromDate] = useState('');
+    const [filterToDate, setFilterToDate] = useState('');
+    const [filterEmployee, setFilterEmployee] = useState('all');
 
     const { toast } = useToast();
 
@@ -155,7 +163,6 @@ export default function AdminPage() {
 
         if (result.success && result.userId && result.shift) {
             try {
-                // The AI flow now returns the data, and we perform the client-side update here.
                 updateUserShift(result.userId, result.shift);
                 toast({ title: "Success", description: result.message });
                 await refreshData();
@@ -169,6 +176,28 @@ export default function AdminPage() {
         setIsShiftModalOpen(false);
         setSelectedUser(null);
         setSelectedShift('');
+    };
+
+    const handlePreviewData = () => {
+        if (!filterFromDate || !filterToDate) {
+            toast({ title: "Error", description: "Please select both a start and end date.", variant: "destructive" });
+            return;
+        }
+        
+        const from = new Date(filterFromDate);
+        const to = new Date(filterToDate);
+        
+        const filtered = allActivity.filter(log => {
+            const logDate = new Date(log.date);
+            const isDateInRange = logDate >= from && logDate <= to;
+            const isEmployeeMatch = filterEmployee === 'all' || log.uid === filterEmployee;
+            const isBreakOrLunch = log.action === 'Break In' || log.action === 'Lunch In';
+
+            return isDateInRange && isEmployeeMatch && isBreakOrLunch && log.duration;
+        });
+
+        setFilteredLogs(filtered);
+        setIsPreviewModalOpen(true);
     };
 
     return (
@@ -201,15 +230,15 @@ export default function AdminPage() {
                 <div className="grid md:grid-cols-3 gap-4 mb-6">
                     <div>
                         <Label>From Date</Label>
-                        <Input type="date" />
+                        <Input type="date" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} />
                     </div>
                     <div>
                         <Label>To Date</Label>
-                        <Input type="date" />
+                        <Input type="date" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} />
                     </div>
                      <div>
                         <Label>Employee</Label>
-                        <Select>
+                        <Select value={filterEmployee} onValueChange={setFilterEmployee}>
                             <SelectTrigger><SelectValue placeholder="All Employees" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Employees</SelectItem>
@@ -219,9 +248,9 @@ export default function AdminPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-4">
-                    <Button variant="secondary"><FileDown className="mr-2 h-4 w-4" /> Export to Excel</Button>
-                    <Button variant="destructive"><FileDown className="mr-2 h-4 w-4" /> Export to PDF</Button>
-                    <Button><Eye className="mr-2 h-4 w-4" /> Preview Data</Button>
+                    <Button variant="secondary" disabled><FileDown className="mr-2 h-4 w-4" /> Export to Excel</Button>
+                    <Button variant="destructive" disabled><FileDown className="mr-2 h-4 w-4" /> Export to PDF</Button>
+                    <Button onClick={handlePreviewData}><Eye className="mr-2 h-4 w-4" /> Preview Data</Button>
                 </div>
             </Card>
 
@@ -360,6 +389,51 @@ export default function AdminPage() {
                   <Button onClick={handleUpdateShift}>Save Changes</Button>
                 </DialogFooter>
               </DialogContent>
+            </Dialog>
+
+            <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Break Log Preview</DialogTitle>
+                        <DialogDescription>
+                           Break and lunch logs from {filterFromDate} to {filterToDate} 
+                           for {users.find(u=>u.uid === filterEmployee)?.name || 'All Employees'}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Employee</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Duration (min)</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredLogs.length > 0 ? (
+                                    filteredLogs.map(log => (
+                                        <TableRow key={log.id}>
+                                            <TableCell>{log.employeeName}</TableCell>
+                                            <TableCell>{log.date}</TableCell>
+                                            <TableCell>{log.action.replace(' In', '')}</TableCell>
+                                            <TableCell>{log.duration}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center">No data found for the selected criteria.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Close</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
             </Dialog>
 
         </main>
