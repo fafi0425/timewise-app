@@ -9,6 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 import {
   ProcessTimesheetInputSchema,
   ProcessTimesheetOutputSchema,
