@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Clock, BarChartBig, Users, CalendarCheck } from 'lucide-react';
@@ -18,7 +19,7 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-900 to-green-900 via-gray-900">
+    <div className="flex flex-col min-h-screen">
        <div className="relative z-10 flex flex-col flex-1">
           <header className="px-4 lg:px-6 h-14 flex items-center bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
             <Link href="/" className="flex items-center justify-center" prefetch={false}>
