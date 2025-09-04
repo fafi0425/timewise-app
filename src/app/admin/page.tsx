@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,7 +83,8 @@ export default function AdminPage() {
 
     const fetchOverbreaks = useCallback(async () => {
         setIsLoadingOverbreaks(true);
-        const activityData = await getActivityLog();
+        const activitySnapshot = await getDocs(query(collection(db, "activity"), orderBy('timestamp', 'desc')));
+        const activityData = activitySnapshot.docs.map(d => ({id: d.id, ...d.data()} as ActivityLog));
         
         const overbreakData = activityData.filter(log => 
             (log.action === 'Break In' && (log.duration || 0) > 15) ||
@@ -110,7 +112,8 @@ export default function AdminPage() {
             setIsLoadingUsers(false);
         }
 
-        const activityData = await getActivityLog();
+        const activitySnapshot = await getDocs(query(collection(db, "activity"), orderBy('timestamp', 'desc')));
+        const activityData = activitySnapshot.docs.map(d => ({id: d.id, ...d.data()} as ActivityLog));
         setAllActivity(activityData);
         
         const today = new Date().toLocaleDateString();
