@@ -43,23 +43,13 @@ export default function LoginForm() {
             title: 'Login Successful',
             description: `Welcome back, ${user.name}!`,
           });
-          // This is the definitive redirect logic
-          if (user.role === 'Administrator') {
-            router.push('/admin');
-          } else {
-            router.push('/dashboard');
-          }
-        } else {
-          toast({
-            title: 'Login Failed',
-            description: 'Invalid email or password. Please try again.',
-            variant: 'destructive',
-          });
+          // The redirection is now handled by the AuthContext,
+          // so we don't need to push routes here.
         }
-    } catch(error) {
+    } catch(error: any) {
          toast({
             title: 'Login Failed',
-            description: 'An unexpected error occurred. Please try again.',
+            description: error.message || 'An unexpected error occurred. Please try again.',
             variant: 'destructive',
           });
     } finally {

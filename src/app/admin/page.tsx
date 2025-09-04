@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
 import { getAllUsersAction, getAllActivityAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
-import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle } from 'lucide-react';
+import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { assignUserShift } from '@/ai/flows/assign-user-shift';
+import { cleanupStaleUsers } from '@/ai/flows/cleanup-stale-users';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -121,7 +122,7 @@ export default function AdminPage() {
              toast({ title: "Error refreshing data", description: error.message, variant: "destructive" });
         } finally {
             setIsLoadingData(false);
-            setIsLoadingUsers(false); // Backward compatibility for User Management loader
+            setIsLoadingUsers(false);
         }
     }, [toast]);
 
@@ -317,6 +318,18 @@ export default function AdminPage() {
         doc.save(`Overbreaks_Report_${new Date().toLocaleDateString()}.pdf`);
     };
 
+    const handleCleanupUsers = async () => {
+        const result = await cleanupStaleUsers({ users });
+        toast({
+            title: result.success ? "Cleanup Complete" : "Cleanup Failed",
+            description: result.message,
+            variant: result.success ? "default" : "destructive"
+        });
+        if (result.success && result.cleanedUserIds && result.cleanedUserIds.length > 0) {
+            refreshData();
+        }
+    };
+
     if (isLoadingData) {
         return (
             <AuthCheck adminOnly>
@@ -382,7 +395,10 @@ export default function AdminPage() {
             </Card>
 
             <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
-                 <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">User Management</CardTitle>
+                <div className="flex justify-between items-center mb-6">
+                 <CardTitle className="text-xl font-semibold text-card-foreground font-headline">User Management</CardTitle>
+                 <Button variant="secondary" onClick={handleCleanupUsers}><CheckCircle className="mr-2 h-4 w-4" />Cleanup Users</Button>
+                </div>
                  <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
                     <div>
                         <h4 className="font-medium text-card-foreground mb-4">Add New User</h4>

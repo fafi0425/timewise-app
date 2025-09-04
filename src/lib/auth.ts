@@ -23,19 +23,17 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     const firebaseUser = userCredential.user;
 
-    // Fetch user profile from Firestore, which is the source of truth for user roles and data.
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
         console.error("Authentication successful, but no user profile found in Firestore.");
         await signOut(auth);
-        return null;
+        throw new Error("User profile does not exist in the database.");
     }
 
     const userProfile = { uid: userDocSnap.id, ...userDocSnap.data() } as User;
     
-    // Initialize user state upon login
     const userStateRef = doc(db, 'userStates', firebaseUser.uid);
     const userStateSnap = await getDoc(userStateRef);
     if (!userStateSnap.exists()) {
@@ -52,8 +50,12 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     return userProfile;
 
   } catch (error: any) {
-    console.error("Firebase Authentication failed:", error.message);
-    return null;
+    if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+         console.error("Firebase Authentication failed: Invalid credentials provided.");
+         throw new Error("Invalid email or password. Please try again.");
+    }
+    console.error(`Firebase Authentication failed: ${error.message}`);
+    throw error;
   }
 };
 
@@ -83,7 +85,6 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         
         await setDoc(doc(db, "users", firebaseUser.uid), userForDb);
         
-        // Initialize user state on creation
         const userStateRef = doc(db, 'userStates', firebaseUser.uid);
         const initialState: UserState = {
             currentState: 'working',

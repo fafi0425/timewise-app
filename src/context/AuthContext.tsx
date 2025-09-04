@@ -35,7 +35,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (userDocSnap.exists()) {
           setUser({ uid: userDocSnap.id, ...userDocSnap.data() } as User);
         } else {
-          // This can happen if the user is deleted from Firestore but not Auth.
           setUser(null);
           await signOutUser();
         }
@@ -52,11 +51,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (loading) return;
 
     if (!user && pathname !== '/login' && pathname !== '/register') {
-      // If not logged in and not on a public page, redirect to login
       router.push('/login');
     } else if (user) {
-      // If logged in and on a public page, redirect to the correct dashboard
-      if (pathname === '/login' || pathname === '/register') {
+      if (pathname === '/login' || pathname === '/register' || pathname === '/') {
         if (user.role === 'Administrator') {
           router.push('/admin');
         } else {
@@ -70,11 +67,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
         const authenticatedUser = await authenticateUser(email, pass);
-        // onAuthStateChanged will handle setting the user state and the useEffect will handle routing
+        // Auth state change will be handled by the listener, which then triggers the redirection useEffect.
         return authenticatedUser;
     } catch(error) {
         console.error("Login process failed:", error);
-        return null;
+        // Rethrow the error to be caught by the form's handler
+        throw error;
     } finally {
         setLoading(false);
     }
