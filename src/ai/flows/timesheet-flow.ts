@@ -21,10 +21,9 @@ export async function processTimesheet(input: ProcessTimesheetInput): Promise<Pr
   return processTimesheetFlow(input);
 }
 
-
 const prompt = ai.definePrompt({
     name: 'timesheetProcessingPrompt',
-    input: { schema: ProcessTimesheetInputSchema },
+    input: { schema: ProcessTimesheetInputSchema.extend({ timesheetJSON: z.string() }) },
     output: { schema: ProcessTimesheetOutputSchema },
     prompt: `You are an expert HR assistant specializing in payroll and timesheet calculations. Your task is to process a series of clock-in and clock-out events for an employee and calculate their daily work metrics based on their assigned shift.
 
@@ -50,14 +49,11 @@ const prompt = ai.definePrompt({
 
     **Input Data (Timesheet Entries):**
     \`\`\`json
-    {{{JSONstringify timesheetEntries}}}
+    {{{timesheetJSON}}}
     \`\`\`
     
     Process the data according to these rules and return the result in the specified JSON format.
     `,
-    helpers: {
-      JSONstringify: (context: any) => JSON.stringify(context),
-    }
 });
 
 
@@ -71,7 +67,10 @@ const processTimesheetFlow = ai.defineFlow(
     if (input.timesheetEntries.length === 0) {
         return { processedDays: [] };
     }
-    const { output } = await prompt(input);
+    const timesheetJSON = JSON.stringify(input.timesheetEntries);
+    const { output } = await prompt({ ...input, timesheetJSON });
     return output!;
   }
 );
+
+    
