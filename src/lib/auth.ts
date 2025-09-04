@@ -1,5 +1,4 @@
-
-import type { User, Shift } from './types';
+import type { User, Shift, UserState } from './types';
 import { auth, db } from './firebase';
 import { 
   createUserWithEmailAndPassword, 
@@ -66,6 +65,21 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     }
 
     const userProfile = { uid: userDocSnap.id, ...userDocSnap.data() } as User;
+    
+    // Initialize user state upon login
+    const userStateRef = doc(db, 'userStates', firebaseUser.uid);
+    const userStateSnap = await getDoc(userStateRef);
+    if (!userStateSnap.exists()) {
+        const initialState: UserState = {
+            currentState: 'working',
+            breakStartTime: null,
+            lunchStartTime: null,
+            totalBreakMinutes: 0,
+            totalLunchMinutes: 0
+        };
+        await setDoc(userStateRef, initialState);
+    }
+
     return userProfile;
 
   } catch (error: any) {
@@ -100,6 +114,17 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         
         await setDoc(doc(db, "users", firebaseUser.uid), userForDb);
         
+        // Initialize user state on creation
+        const userStateRef = doc(db, 'userStates', firebaseUser.uid);
+        const initialState: UserState = {
+            currentState: 'working',
+            breakStartTime: null,
+            lunchStartTime: null,
+            totalBreakMinutes: 0,
+            totalLunchMinutes: 0
+        };
+        await setDoc(userStateRef, initialState);
+
         return userForDb as User;
 
     } catch(e: any) {
@@ -112,6 +137,7 @@ export const deleteUser = async (uid: string): Promise<void> => {
     console.warn(`Deleting user ${uid} from Firestore. Auth entry must be deleted from Firebase Console.`);
     try {
       await deleteDoc(doc(db, "users", uid));
+      await deleteDoc(doc(db, "userStates", uid));
     } catch(e) {
       console.error("Error deleting user from Firestore:", e);
     }

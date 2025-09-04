@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coffee, Utensils } from 'lucide-react';
 import type { User, UserState } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 
-interface OnBreakUser {
-    name: string;
-    department: string;
+interface OnBreakUser extends User {
     type: 'break' | 'lunch';
     startTime: string;
 }
@@ -16,42 +16,39 @@ export default function OnBreakList() {
   const [onBreakUsers, setOnBreakUsers] = useState<OnBreakUser[]>([]);
 
   useEffect(() => {
-    const updateList = () => {
-        const allUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-        const onBreak: OnBreakUser[] = [];
+    const statesQuery = query(collection(db, "userStates"), where("currentState", "in", ["break", "lunch"]));
+    
+    const unsubscribe = onSnapshot(statesQuery, async (querySnapshot) => {
+        const usersOnBreak: OnBreakUser[] = [];
+        if (querySnapshot.empty) {
+            setOnBreakUsers([]);
+            return;
+        }
 
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('userState_')) {
-                try {
-                    const state: Partial<UserState> = JSON.parse(localStorage.getItem(key) || '{}');
-                    const email = key.replace('userState_', '');
-                    const user = allUsers.find(u => u.email === email);
+        const userIds = querySnapshot.docs.map(doc => doc.id);
+        const usersQuery = query(collection(db, "users"), where("uid", "in", userIds));
+        const usersSnapshot = await getDocs(usersQuery);
+        const usersData = usersSnapshot.docs.reduce((acc, doc) => {
+            acc[doc.id] = doc.data() as User;
+            return acc;
+        }, {} as Record<string, User>);
 
-                    if (user) {
-                         if (state.currentState === 'break' && state.breakStartTime) {
-                            onBreak.push({ name: user.name, department: user.department, type: 'break', startTime: state.breakStartTime });
-                        }
-                        if (state.currentState === 'lunch' && state.lunchStartTime) {
-                            onBreak.push({ name: user.name, department: user.department, type: 'lunch', startTime: state.lunchStartTime });
-                        }
-                    }
-                } catch (e) {
-                    console.error('Failed to parse user state from localStorage', e);
+        querySnapshot.forEach(doc => {
+            const state = doc.data() as UserState;
+            const user = usersData[doc.id];
+            
+            if (user) {
+                if (state.currentState === 'break' && state.breakStartTime) {
+                    usersOnBreak.push({ ...user, type: 'break', startTime: state.breakStartTime });
+                } else if (state.currentState === 'lunch' && state.lunchStartTime) {
+                     usersOnBreak.push({ ...user, type: 'lunch', startTime: state.lunchStartTime });
                 }
             }
-        }
-        setOnBreakUsers(onBreak);
-    };
-    
-    updateList();
-    const interval = setInterval(updateList, 5000); // Poll every 5 seconds
-    window.addEventListener('storage', updateList); // Also update when storage changes
-    
-    return () => {
-        clearInterval(interval);
-        window.removeEventListener('storage', updateList);
-    };
+        });
+        setOnBreakUsers(usersOnBreak);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (

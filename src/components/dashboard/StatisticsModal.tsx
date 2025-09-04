@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getActivityLog } from '@/hooks/useTimeTracker';
 import type { ActivityLog } from '@/lib/types';
 import { BarChart, Clock, Coffee, Utensils } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface StatisticsModalProps {
   isOpen: boolean;
@@ -18,10 +19,15 @@ interface StatisticsModalProps {
 
 export default function StatisticsModal({ isOpen, onClose }: StatisticsModalProps) {
   const { user } = useAuth();
-  if (!user) return null;
+  const [userActivities, setUserActivities] = useState<ActivityLog[]>([]);
 
-  const allActivities: ActivityLog[] = getActivityLog();
-  const userActivities = allActivities.filter((a) => a.uid === user.uid);
+  useEffect(() => {
+    if (user && isOpen) {
+      getActivityLog(user.uid).then(setUserActivities);
+    }
+  }, [user, isOpen]);
+
+  if (!user) return null;
 
   const totalBreakOuts = userActivities.filter((a) => a.action === 'Break Out').length;
   const totalLunchOuts = userActivities.filter((a) => a.action === 'Lunch Out').length;

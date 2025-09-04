@@ -17,6 +17,7 @@ export interface ActivityLog {
   time: string;
   action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In' | 'Work Ended';
   duration: number | null;
+  timestamp: number;
 }
 
 export interface UserState {

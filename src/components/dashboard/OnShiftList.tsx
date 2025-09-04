@@ -7,8 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, onSnapshot, orderBy, limit } from 'firebase/firestore';
+
 
 interface OnShiftUser {
+    uid: string;
     name: string;
     department: string;
     latestAction: string;
@@ -25,23 +29,18 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
     const [title, setTitle] = useState('Current Shift Roster');
 
     useEffect(() => {
-        const updateList = () => {
-            const allUsers: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-            const logs: ActivityLog[] = JSON.parse(localStorage.getItem('activityLog') || '[]');
+        const updateList = async () => {
             const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
 
             const now = new Date();
             const currentHour = now.getHours();
             
-            // Determine the actual current shift based on time
             let actualCurrentShift: Shift = 'morning';
             if (shiftFilter === 'custom') {
                 actualCurrentShift = 'custom';
             } else {
-                const nightShiftEnd = SHIFTS.night.end!; // 6
-                const nightShiftStart = SHIFTS.night.start!; // 21
-
-                // Handle overnight shift logic carefully
+                const nightShiftEnd = SHIFTS.night.end!;
+                const nightShiftStart = SHIFTS.night.start!;
                 if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
                      actualCurrentShift = 'night';
                 } else if (currentHour >= SHIFTS.morning.start! && currentHour < SHIFTS.morning.end!) {
@@ -51,88 +50,57 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                 }
             }
             
-            // Use the admin's filter if set, otherwise default to the actual current shift
             const shiftToDisplay = shiftFilter || actualCurrentShift;
             setActiveShiftFilter(shiftToDisplay);
             setTitle(`${SHIFTS[shiftToDisplay]?.name || 'Custom Shift'} Roster`);
 
-            const todayStr = now.toLocaleDateString();
-            const rosterUsers: OnShiftUser[] = [];
-            
-            const usersInShift = allUsers.filter(user => user.shift === shiftToDisplay && user.role !== 'Administrator');
-
+            let usersInShiftQuery;
             if (shiftToDisplay === 'custom') {
-                const customStart = localStorage.getItem('customShiftStart');
-                const customEnd = localStorage.getItem('customShiftEnd');
-                
-                if (customStart && customEnd) {
-                     const [startHour, startMinute] = customStart.split(':').map(Number);
-                     const [endHour, endMinute] = customEnd.split(':').map(Number);
-
-                     const startTime = new Date();
-                     startTime.setHours(startHour, startMinute, 0, 0);
-
-                     const endTime = new Date();
-                     endTime.setHours(endHour, endMinute, 0, 0);
-                     
-                     // simple check for now, doesn't handle overnight custom shifts
-                     if (now >= startTime && now <= endTime) {
-                         // Find all users who are logged in, regardless of their assigned shift
-                         const loggedInUsers = allUsers.filter(u => {
-                            if (u.role === 'Administrator') return false;
-                            const userLogsToday = logs.filter(l => l.uid === u.uid && l.date === todayStr);
-                            const latestLog = userLogsToday[0];
-                            return latestLog && latestLog.action !== 'Work Ended';
-                         });
-                         usersInShift.push(...loggedInUsers.filter(u => !usersInShift.find(us => us.uid === u.uid)));
-                     } else {
-                         // if outside custom shift hours, show no one
-                         usersInShift.length = 0;
-                     }
-                }
+                 // For custom shifts, logic might need to be more complex.
+                 // For now, let's assume it shows all active non-admin users.
+                 usersInShiftQuery = query(collection(db, "users"), where("role", "!=", "Administrator"));
+            } else {
+                 usersInShiftQuery = query(collection(db, "users"), where("shift", "==", shiftToDisplay), where("role", "!=", "Administrator"));
             }
-
-
-            usersInShift.forEach(user => {
-                if (user.shift === 'none') return;
-                
-                const userLogsToday = logs.filter(l => l.uid === user.uid && l.date === todayStr);
-                const latestLog = userLogsToday[0]; // Logs are prepended, so first one is the latest
-
-                // If user has no logs today, they are logged out
-                if (!latestLog) {
-                     rosterUsers.push({
-                        name: user.name,
-                        department: user.department,
-                        latestAction: 'Logged Out',
-                        latestActionTime: '',
-                    });
-                    return;
-                }
-
-                // If latest action is 'Work Ended', they are logged out
-                if (latestLog.action === 'Work Ended') {
-                    rosterUsers.push({
-                        name: user.name,
-                        department: user.department,
-                        latestAction: 'Logged Out',
-                        latestActionTime: latestLog.time,
-                    });
-                } else {
-                     rosterUsers.push({
-                        name: user.name,
-                        department: user.department,
-                        latestAction: latestLog.action,
-                        latestActionTime: latestLog.time,
-                    });
-                }
-            });
             
+            const usersSnapshot = await getDocs(usersInShiftQuery);
+            const usersInShift = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+            
+            const rosterUsersPromises = usersInShift.map(async (user) => {
+                 const activityQuery = query(
+                    collection(db, "activity"), 
+                    where("uid", "==", user.uid), 
+                    orderBy("timestamp", "desc"), 
+                    limit(1)
+                );
+                const activitySnapshot = await getDocs(activityQuery);
+                const latestLog = activitySnapshot.docs[0]?.data() as ActivityLog;
+
+                if (!latestLog || latestLog.action === 'Work Ended' || latestLog.date !== new Date().toLocaleDateString()) {
+                     return {
+                        uid: user.uid,
+                        name: user.name,
+                        department: user.department,
+                        latestAction: 'Logged Out',
+                        latestActionTime: latestLog?.time || '',
+                    };
+                }
+                
+                return {
+                    uid: user.uid,
+                    name: user.name,
+                    department: user.department,
+                    latestAction: latestLog.action,
+                    latestActionTime: latestLog.time,
+                };
+            });
+
+            const rosterUsers = await Promise.all(rosterUsersPromises);
             setOnShiftUsers(rosterUsers);
         };
 
         updateList();
-        const interval = setInterval(updateList, 5000); // Poll for updates
+        const interval = setInterval(updateList, 30000); // Poll for updates every 30s
         window.addEventListener('storage', updateList); // Listen for shift changes from admin
         return () => {
             clearInterval(interval);
@@ -141,9 +109,10 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
     }, []);
 
     const getActionBadgeVariant = (action: string) => {
-        if (action.includes('In') || action.includes('Started')) return 'secondary';
+        if (action.includes('In') || action.includes('Started') || action === 'working') return 'secondary';
         if (action.includes('Out')) return 'default';
         if (action === 'Logged Out') return 'destructive';
+        if (action === 'break' || action === 'lunch') return 'default';
         return 'outline';
     };
 
@@ -163,8 +132,8 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                                 <p>No employees are assigned to or active in this shift.</p>
                             </div>
                         ) : (
-                            onShiftUsers.map((u, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                            onShiftUsers.map((u) => (
+                                <div key={u.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                                     <div>
                                         <div className="font-medium text-card-foreground">{u.name}</div>
                                         <div className="text-sm text-muted-foreground">{u.department}</div>

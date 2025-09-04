@@ -6,6 +6,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
 import { authenticateUser, seedInitialData, signOutUser } from '@/lib/auth';
 import { endWorkSession } from '@/hooks/useTimeTracker';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -24,16 +28,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
   
   useEffect(() => {
-    const initializeApp = async () => {
-        await seedInitialData();
-        const storedUser = localStorage.getItem('currentUser');
-        if (storedUser) {
-          const activeUser = JSON.parse(storedUser);
-          setUser(activeUser);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setUser({ uid: userDocSnap.id, ...userDocSnap.data() } as User);
+        } else {
+          // Handle case where user exists in Auth but not Firestore
+          setUser(null);
         }
-        setLoading(false);
-    };
-    initializeApp();
+      } else {
+         const storedUser = localStorage.getItem('currentUser');
+         if (storedUser) {
+             const activeUser = JSON.parse(storedUser);
+             // This typically applies to the local admin user who doesn't use Firebase Auth
+             if (activeUser.role === 'Administrator') {
+                 setUser(activeUser);
+             } else {
+                setUser(null);
+             }
+         } else {
+            setUser(null);
+         }
+      }
+      setLoading(false);
+    });
+
+    seedInitialData();
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -42,6 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user && pathname !== '/login' && pathname !== '/register') {
       router.push('/login');
     } else if (user) {
+      localStorage.setItem('currentUser', JSON.stringify(user));
       if (pathname === '/login' || pathname === '/register') {
         router.push(user.role === 'Administrator' ? '/admin' : '/dashboard');
       }
@@ -52,8 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     const authenticatedUser = await authenticateUser(email, pass);
     if (authenticatedUser) {
-      localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
-      setUser(authenticatedUser);
+      // onAuthStateChanged will handle setting the user state
       setLoading(false);
       return authenticatedUser;
     }
@@ -62,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    if(user){
+    if(user && user.role !== 'Administrator'){
        endWorkSession(user);
     }
     try {

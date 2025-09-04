@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +30,8 @@ import { assignUserShift } from '@/ai/flows/assign-user-shift';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
@@ -81,9 +82,8 @@ export default function AdminPage() {
 
     const fetchOverbreaks = useCallback(async () => {
         setIsLoadingOverbreaks(true);
-        const activityData: ActivityLog[] = getActivityLog();
-        // This is client-side, so we can't use the AI flow directly here yet.
-        // For now, we'll use simple filtering.
+        const activityData = await getActivityLog();
+        
         const overbreakData = activityData.filter(log => 
             (log.action === 'Break In' && (log.duration || 0) > 15) ||
             (log.action === 'Lunch In' && (log.duration || 0) > 60)
@@ -110,7 +110,7 @@ export default function AdminPage() {
             setIsLoadingUsers(false);
         }
 
-        const activityData: ActivityLog[] = getActivityLog();
+        const activityData = await getActivityLog();
         setAllActivity(activityData);
         
         const today = new Date().toLocaleDateString();
@@ -228,7 +228,7 @@ export default function AdminPage() {
         setSelectedShift('');
     };
 
-    const filterLogs = () => {
+    const filterLogs = async () => {
         if (!filterFromDate || !filterToDate) {
             toast({ title: "Error", description: "Please select both a start and end date.", variant: "destructive" });
             return false;
@@ -255,14 +255,14 @@ export default function AdminPage() {
         return true;
     }
 
-    const handlePreviewData = () => {
-        if (filterLogs()) {
+    const handlePreviewData = async () => {
+        if (await filterLogs()) {
             setIsPreviewModalOpen(true);
         }
     };
 
-    const handleExportPdf = () => {
-        if (filterLogs()) {
+    const handleExportPdf = async () => {
+        if (await filterLogs()) {
             const doc = new jsPDF();
             const tableColumn = ["Employee", "Date", "Time", "Type", "Duration (min)"];
             const tableRows: (string|number|null)[][] = [];

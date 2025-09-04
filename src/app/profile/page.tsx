@@ -26,15 +26,17 @@ export default function ProfilePage() {
 
     useEffect(() => {
         if (user) {
-            const allLogs = getActivityLog();
-            const userLogs = allLogs.filter(log => log.uid === user.uid);
-            setRecentActivity(userLogs.slice(0, 10));
+            const fetchLogs = async () => {
+                const userLogs = await getActivityLog(user.uid);
+                setRecentActivity(userLogs.slice(0, 10));
+            }
+            fetchLogs();
         }
     }, [user]);
 
     if (!user) return null;
     
-    const userShift = user.shift ? SHIFTS[user.shift]?.name : 'Not Assigned';
+    const userShift = user.shift && user.shift !== 'none' ? SHIFTS[user.shift]?.name : 'Not Assigned';
 
     return (
         <AuthCheck>

@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { ActivityLog } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const BREAK_LIMIT = 15;
 const LUNCH_LIMIT = 60;
@@ -13,22 +15,33 @@ export default function TeamOverbreakAlerts() {
   const { user } = useAuth();
 
   useEffect(() => {
-    const updateAlerts = () => {
-        const logs: ActivityLog[] = JSON.parse(localStorage.getItem('activityLog') || '[]');
-        const today = new Date().toLocaleDateString();
-        
-        const todaysOverbreaks = logs.filter(log => {
-            if (log.date !== today || !log.duration) return false;
-            if (log.action === 'Break In' && log.duration > BREAK_LIMIT) return true;
-            if (log.action === 'Lunch In' && log.duration > LUNCH_LIMIT) return true;
-            return false;
-        });
-        setOverbreaks(todaysOverbreaks);
-    };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
 
-    updateAlerts();
-    const interval = setInterval(updateAlerts, 10000); // Update every 10 seconds
-    return () => clearInterval(interval);
+    const q = query(
+        collection(db, "activity"), 
+        where("timestamp", ">=", todayTimestamp),
+        where("action", "in", ["Break In", "Lunch In"])
+    );
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const todaysOverbreaks: ActivityLog[] = [];
+        querySnapshot.forEach((doc) => {
+            const log = { id: doc.id, ...doc.data() } as ActivityLog;
+            if (!log.duration) return;
+
+            const isBreak = log.action === 'Break In';
+            if (isBreak && log.duration > BREAK_LIMIT) {
+                todaysOverbreaks.push(log);
+            } else if (!isBreak && log.duration > LUNCH_LIMIT) {
+                todaysOverbreaks.push(log);
+            }
+        });
+        setOverbreaks(todaysOverbreaks.sort((a,b) => b.timestamp - a.timestamp));
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (

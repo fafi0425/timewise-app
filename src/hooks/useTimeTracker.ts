@@ -1,39 +1,56 @@
-
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import type { UserState, ActivityLog, User } from '@/lib/types';
 import { useToast } from './use-toast';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  getDocs, 
+  orderBy, 
+  limit,
+  doc,
+  setDoc,
+  getDoc
+} from 'firebase/firestore';
 
-const BREAK_TIME_LIMIT = 15 * 60; // 15 minutes in seconds
-const LUNCH_TIME_LIMIT = 60 * 60; // 60 minutes in seconds
-const ACTIVITY_LOG_LIMIT = 100; // Keep the last 100 entries
+const ACTIVITY_LOG_LIMIT = 100;
 
-export const getActivityLog = (): ActivityLog[] => {
+export const getActivityLog = async (uid?: string): Promise<ActivityLog[]> => {
     if (typeof window === 'undefined') return [];
-    return JSON.parse(localStorage.getItem('activityLog') || '[]');
+    
+    const activityRef = collection(db, 'activity');
+    let q;
+    if (uid) {
+        q = query(activityRef, where('uid', '==', uid), orderBy('timestamp', 'desc'), limit(ACTIVITY_LOG_LIMIT));
+    } else {
+        q = query(activityRef, orderBy('timestamp', 'desc'), limit(ACTIVITY_LOG_LIMIT));
+    }
+    
+    const querySnapshot = await getDocs(q);
+    const logs: ActivityLog[] = [];
+    querySnapshot.forEach(doc => {
+        const data = doc.data();
+        logs.push({ id: doc.id, ...data } as ActivityLog);
+    });
+    return logs;
 }
 
-const saveActivityLog = (log: ActivityLog[]) => {
-    // Keep only the most recent logs to prevent exceeding quota
-    const limitedLog = log.slice(0, ACTIVITY_LOG_LIMIT);
-    localStorage.setItem('activityLog', JSON.stringify(limitedLog));
-}
-
-export const endWorkSession = (sessionUser: User) => {
-    const newLog: ActivityLog = {
-      id: `log_${Date.now()}_${sessionUser.uid}`,
+export const endWorkSession = async (sessionUser: User) => {
+    const newLog: Omit<ActivityLog, 'id'> = {
       uid: sessionUser.uid,
       employeeName: sessionUser.name,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       action: 'Work Ended',
       duration: null,
+      timestamp: Date.now()
     };
-    const allLogs = getActivityLog();
-    const updatedLogs = [newLog, ...allLogs];
-    saveActivityLog(updatedLogs);
-  };
+    await addDoc(collection(db, 'activity'), newLog);
+};
 
 export default function useTimeTracker() {
   const { user } = useAuth();
@@ -54,48 +71,54 @@ export default function useTimeTracker() {
     isDanger: false,
   });
 
-  const logActivity = useCallback((action: ActivityLog['action'], duration: number | null = null) => {
+  const logActivity = useCallback(async (action: ActivityLog['action'], duration: number | null = null) => {
     if (!user) return;
 
-    const newLog: ActivityLog = {
-      id: `log_${Date.now()}_${user.uid}`,
+    const newLog: Omit<ActivityLog, 'id'> = {
       uid: user.uid,
       employeeName: user.name,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       action,
       duration,
+      timestamp: Date.now()
     };
     
-    // Update the global log
-    const allLogs = getActivityLog();
-    const updatedLogs = [newLog, ...allLogs];
-    saveActivityLog(updatedLogs);
+    await addDoc(collection(db, 'activity'), newLog);
     
-    // Update local state for the current user's view
-    const userTodayLogs = updatedLogs.filter(log => log.uid === user.uid && log.date === new Date().toLocaleDateString());
-    setActivityLog(userTodayLogs);
+    const userTodayLogs = await getActivityLog(user.uid);
+    setActivityLog(userTodayLogs.filter(log => log.date === new Date().toLocaleDateString()));
 
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
     
-    const allLogs = getActivityLog();
-    const userTodayLogs = allLogs.filter(log => log.uid === user.uid && log.date === new Date().toLocaleDateString());
-    setActivityLog(userTodayLogs);
+    const fetchInitialData = async () => {
+        const userTodayLogs = await getActivityLog(user.uid);
+        setActivityLog(userTodayLogs.filter(log => log.date === new Date().toLocaleDateString()));
 
-    const savedState: Partial<UserState> = JSON.parse(localStorage.getItem(`userState_${user.email}`) || '{}');
-    if (savedState.currentState && savedState.currentState !== 'working') {
-        setStatus(prev => ({...prev, ...savedState}));
-    } else if (userTodayLogs.filter(l => l.action === 'Work Started').length === 0) {
-        logActivity('Work Started');
-    }
+        const stateDocRef = doc(db, 'userStates', user.uid);
+        const stateDocSnap = await getDoc(stateDocRef);
+
+        if (stateDocSnap.exists()) {
+            const savedState = stateDocSnap.data() as UserState;
+             if (savedState.currentState && savedState.currentState !== 'working') {
+                setStatus(savedState);
+            }
+        } else if (userTodayLogs.filter(l => l.action === 'Work Started').length === 0) {
+            logActivity('Work Started');
+        }
+    };
+    
+    fetchInitialData();
+
   }, [user, logActivity]);
   
   useEffect(() => {
     if(user) {
-        localStorage.setItem(`userState_${user.email}`, JSON.stringify(status));
+        const stateDocRef = doc(db, 'userStates', user.uid);
+        setDoc(stateDocRef, status, { merge: true });
     }
   }, [status, user]);
 
@@ -124,6 +147,9 @@ export default function useTimeTracker() {
         duration = Math.round((new Date().getTime() - startTime.getTime()) / 60000);
     }
 
+    const BREAK_TIME_LIMIT_MINS = 15;
+    const LUNCH_TIME_LIMIT_MINS = 60;
+
     if (type === 'break') {
       logActivity('Break In', duration);
       setStatus(prev => ({
@@ -132,8 +158,8 @@ export default function useTimeTracker() {
           breakStartTime: null,
           totalBreakMinutes: prev.totalBreakMinutes + duration
       }));
-      if (duration > BREAK_TIME_LIMIT / 60) {
-        toast({ title: "Warning", description: `Break exceeded by ${duration - (BREAK_TIME_LIMIT/60)} minutes!`, variant: "destructive" });
+      if (duration > BREAK_TIME_LIMIT_MINS) {
+        toast({ title: "Warning", description: `Break exceeded by ${duration - BREAK_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
       }
     } else {
       logActivity('Lunch In', duration);
@@ -143,8 +169,8 @@ export default function useTimeTracker() {
           lunchStartTime: null,
           totalLunchMinutes: prev.totalLunchMinutes + duration
       }));
-       if (duration > LUNCH_TIME_LIMIT / 60) {
-        toast({ title: "Warning", description: `Lunch exceeded by ${duration - (LUNCH_TIME_LIMIT/60)} minutes!`, variant: "destructive" });
+       if (duration > LUNCH_TIME_LIMIT_MINS) {
+        toast({ title: "Warning", description: `Lunch exceeded by ${duration - LUNCH_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
       }
     }
   }, [logActivity, status, toast]);
@@ -152,14 +178,16 @@ export default function useTimeTracker() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
+    const BREAK_TIME_LIMIT_SECS = 15 * 60;
+    const LUNCH_TIME_LIMIT_SECS = 60 * 60;
     let timeLimit = 0;
     let startTime: Date | null = null;
 
     if (status.currentState === 'break' && status.breakStartTime) {
-        timeLimit = BREAK_TIME_LIMIT;
+        timeLimit = BREAK_TIME_LIMIT_SECS;
         startTime = new Date(status.breakStartTime);
     } else if (status.currentState === 'lunch' && status.lunchStartTime) {
-        timeLimit = LUNCH_TIME_LIMIT;
+        timeLimit = LUNCH_TIME_LIMIT_SECS;
         startTime = new Date(status.lunchStartTime);
     }
     
