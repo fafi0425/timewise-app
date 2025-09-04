@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow to handle deleting old activity logs.
@@ -8,29 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import * as admin from 'firebase-admin';
-
-// Initialize the service account credentials from environment variables
-const serviceAccount = {
-  projectId: process.env.PROJECT_ID,
-  clientEmail: process.env.CLIENT_EMAIL,
-  // The private key needs to have its escaped newlines replaced with actual newlines.
-  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
-};
-
-// Initialize the Firebase Admin app if it's not already initialized.
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log("Firebase Admin SDK initialized successfully for cleanup flow.");
-  } catch (error: any) {
-    console.error("Firebase Admin SDK (cleanup flow) initialization error:", error.message);
-  }
-}
-
-const db = admin.firestore();
+import { db } from '@/lib/firebase-admin';
 
 const CleanupActivityLogsOutputSchema = z.object({
   success: z.boolean().describe('Whether the cleanup process was successful.'),
