@@ -50,6 +50,15 @@ export default function ProfilePage() {
         const file = event.target.files?.[0];
         if (!file || !user) return;
 
+        if (file.size > 1024 * 1024) { // 1MB limit
+            toast({
+                title: "File Too Large",
+                description: "Please upload an image smaller than 1MB.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setUploading(true);
         try {
             const storageRef = ref(storage, `profile-pictures/${user.uid}`);
