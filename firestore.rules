@@ -3,29 +3,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check for Administrator role
     function isAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
     }
 
+    // Users Collection:
+    // Admins can read/write any user document.
+    // Any authenticated user can get or list user documents. This is needed for shift rosters and user info display.
+    // Users can only update their own document.
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId || isAdmin();
-    }
-    
-    match /userStates/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId || isAdmin();
+      allow write: if isAdmin() || request.auth.uid == userId;
     }
 
-    match /activity/{docId} {
+    // User States Collection:
+    // Admins can read/write any user state.
+    // Any authenticated user can read user states. This is needed for real-time status components.
+    // Users can only create or update their own state document.
+    match /userStates/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth.uid == resource.data.uid || isAdmin();
+      allow write: if isAdmin() || request.auth.uid == userId;
     }
-    
+
+    // Activity Collection:
+    // Admins can read/write any activity log.
+    // Any authenticated user can list activity logs (for TeamOverbreakAlerts).
+    // Users can only create their own activity logs. No updates or deletes allowed for data integrity.
+    match /activity/{docId} {
+      allow get, list: if request.auth != null;
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Timesheet Collection:
+    // Admins can read/write any timesheet entry.
+    // Users can only create their own timesheet entries and read their own list of entries.
+    // No updates or deletes allowed for data integrity.
     match /timesheet/{docId} {
-      allow read: if request.auth.uid == resource.data.uid || isAdmin();
-      allow list: if request.auth != null && 'uid' in request.query.where && request.query.where.uid == request.auth.uid || isAdmin();
-      allow write: if request.auth.uid == resource.data.uid || isAdmin();
+      allow get: if request.auth.uid == resource.data.uid || isAdmin();
+      allow list: if request.query.uid == request.auth.uid || isAdmin();
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow update, delete: if isAdmin();
     }
   }
 }
