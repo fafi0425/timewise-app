@@ -1,32 +1,36 @@
 'use server';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import type { User, ActivityLog } from './types';
 
+// This object will hold the initialized Firebase Admin app instance.
+let app: admin.app.App | undefined = undefined;
 
 // This function ensures the Firebase Admin SDK is initialized, but only once.
 const initializeAdmin = () => {
-  if (admin.apps.length > 0) {
-    return admin.app();
+  if (!admin.apps.length) {
+    try {
+      const serviceAccount = {
+        projectId: process.env.PROJECT_ID,
+        clientEmail: process.env.CLIENT_EMAIL,
+        // The private key needs to have its newlines restored.
+        privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      };
+      
+      app = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+    } catch (error: any) {
+      console.error("Firebase Admin SDK initialization error:", error.message);
+      // Throw the error to prevent the app from continuing with a misconfigured state.
+      throw new Error("Failed to initialize Firebase Admin SDK: " + error.message);
+    }
+  } else {
+    app = admin.app();
   }
-
-  try {
-    const serviceAccount = {
-      projectId: process.env.PROJECT_ID,
-      clientEmail: process.env.CLIENT_EMAIL,
-      // The private key needs to have its newlines restored.
-      privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    };
-    
-    return admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } catch (error: any) {
-    console.error("Firebase Admin SDK initialization error:", error.message);
-    // Throw the error to prevent the app from continuing with a misconfigured state.
-    throw new Error("Failed to initialize Firebase Admin SDK: " + error.message);
-  }
+  return app;
 };
 
+// Initialize the app when this module is loaded.
 initializeAdmin();
 
 export const db = admin.firestore();
@@ -88,4 +92,3 @@ export async function getAllActivityAction(): Promise<{ success: boolean, messag
     };
   }
 }
-

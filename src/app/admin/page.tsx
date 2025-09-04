@@ -173,7 +173,7 @@ export default function AdminPage() {
 
     const handleDeleteUser = async (uid: string) => {
         if (users.find(u => u.uid === uid)?.role === 'Administrator') {
-            toast({ title: "Action Forbidden", description: "Cannot delete the main administrator account.", variant: "destructive" });
+            toast({ title: "Action Forbidden", description: "Cannot delete an administrator account.", variant: "destructive" });
             return;
         }
         await deleteUser(uid);
@@ -654,4 +654,3 @@ export default function AdminPage() {
     );
 
     
-
