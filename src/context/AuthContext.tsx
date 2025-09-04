@@ -39,18 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
         }
       } else {
-         const storedUser = localStorage.getItem('currentUser');
-         if (storedUser) {
-             const activeUser = JSON.parse(storedUser);
-             // This typically applies to the local admin user who doesn't use Firebase Auth
-             if (activeUser.role === 'Administrator') {
-                 setUser(activeUser);
-             } else {
-                setUser(null);
-             }
-         } else {
-            setUser(null);
-         }
+         setUser(null);
       }
       setLoading(false);
     });

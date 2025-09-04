@@ -1,3 +1,4 @@
+
 import type { User, Shift, UserState } from './types';
 import { auth, db } from './firebase';
 import { 
@@ -17,30 +18,7 @@ import {
 } from 'firebase/firestore';
 
 
-const defaultAdmin: User = {
-  uid: 'admin001',
-  name: 'System Administrator',
-  email: 'admin123@gmail.com',
-  password: 'sigma88',
-  department: 'Admin',
-  role: 'Administrator',
-  shift: 'none',
-};
-
 export const authenticateUser = async (email: string, pass: string): Promise<User | null> => {
-  // Special case for local admin login, which doesn't use Firebase Auth.
-  if (email === defaultAdmin.email && pass === defaultAdmin.password) {
-    const adminDoc = await getDoc(doc(db, 'users', defaultAdmin.uid));
-    if (adminDoc.exists()) {
-        return { uid: adminDoc.id, ...adminDoc.data() } as User;
-    }
-    // If admin doesn't exist in DB, create it.
-    const adminDataForDb = { ...defaultAdmin };
-    delete adminDataForDb.password;
-    await setDoc(doc(db, 'users', defaultAdmin.uid), adminDataForDb);
-    return defaultAdmin;
-  }
-  
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     const firebaseUser = userCredential.user;
