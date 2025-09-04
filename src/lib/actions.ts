@@ -4,7 +4,7 @@
 require('dotenv').config(); 
 
 import * as admin from 'firebase-admin';
-import type { User } from './types';
+import type { User, ActivityLog } from './types';
 
 // Initialize the service account credentials from environment variables
 const serviceAccount = {
@@ -57,6 +57,30 @@ export async function getAllUsersAction(): Promise<{ success: boolean, message: 
       success: false,
       message: `Failed to retrieve users: ${errorMessage}`,
       users: [],
+    };
+  }
+}
+
+export async function getAllActivityAction(): Promise<{ success: boolean, message: string, activities?: ActivityLog[] }> {
+  try {
+    const activityCol = db.collection('activity').orderBy('timestamp', 'desc');
+    const activitySnapshot = await activityCol.get();
+
+    if (activitySnapshot.empty) {
+        return { success: true, message: 'No activity found.', activities: [] };
+    }
+
+    const activityList = activitySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
+
+    return { success: true, message: 'Activity logs retrieved.', activities: activityList };
+  } catch (error) {
+     const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error("Error fetching activity with Admin SDK:", errorMessage);
+    return {
+      success: false,
+      message: `Failed to retrieve activity logs: ${errorMessage}`,
+      activities: [],
     };
   }
 }

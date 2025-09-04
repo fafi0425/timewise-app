@@ -8,13 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
-import { getAllUsersAction } from '@/lib/actions';
+import { getAllUsersAction, getAllActivityAction } from '@/lib/actions';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getActivityLog } from '@/hooks/useTimeTracker';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import ShiftManager from '@/components/admin/ShiftManager';
 import {
@@ -31,9 +30,6 @@ import { assignUserShift } from '@/ai/flows/assign-user-shift';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -57,7 +53,7 @@ export default function AdminPage() {
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
     const [overbreaks, setOverbreaks] = useState<any[]>([]);
-    const [isLoadingOverbreaks, setIsLoadingOverbreaks] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(true);
     
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
@@ -81,54 +77,53 @@ export default function AdminPage() {
 
     const { toast } = useToast();
 
-    const fetchOverbreaks = useCallback(async () => {
-        setIsLoadingOverbreaks(true);
-        const activitySnapshot = await getDocs(query(collection(db, "activity"), orderBy('timestamp', 'desc')));
-        const activityData = activitySnapshot.docs.map(d => ({id: d.id, ...d.data()} as ActivityLog));
-        
-        const overbreakData = activityData.filter(log => 
-            (log.action === 'Break In' && log.duration && log.duration > 15) ||
-            (log.action === 'Lunch In' && log.duration && log.duration > 60)
-        );
-        setOverbreaks(overbreakData.map(o => ({...o, id: `overbreak_${Math.random()}`})));
-        setIsLoadingOverbreaks(false);
-    }, []);
-
     const refreshData = useCallback(async () => {
-        setIsLoadingUsers(true);
+        setIsLoadingData(true);
         try {
-            const result = await getAllUsersAction();
-            if (result.success && result.users) {
-                setUsers(result.users);
-                setStats(prev => ({ ...prev, totalEmployees: result.users?.length || 0 }));
+            const [usersResult, activityResult] = await Promise.all([
+                getAllUsersAction(),
+                getAllActivityAction()
+            ]);
+
+            if (usersResult.success && usersResult.users) {
+                setUsers(usersResult.users);
             } else {
-                toast({ title: "Error", description: result.message, variant: "destructive" });
+                toast({ title: "Error Fetching Users", description: usersResult.message, variant: "destructive" });
                 setUsers([]);
             }
+
+            if (activityResult.success && activityResult.activities) {
+                const activities = activityResult.activities;
+                setAllActivity(activities);
+
+                const today = new Date().toLocaleDateString();
+                const todayActivities = activities.filter(a => a.date === today);
+
+                setStats({
+                    totalEmployees: usersResult.users?.length || 0,
+                    totalActivities: activities.length,
+                    todayBreaks: todayActivities.filter(a => a.action === 'Break Out').length,
+                    todayLunches: todayActivities.filter(a => a.action === 'Lunch Out').length,
+                });
+                
+                const overbreakData = activities.filter(log => 
+                    (log.action === 'Break In' && log.duration && log.duration > 15) ||
+                    (log.action === 'Lunch In' && log.duration && log.duration > 60)
+                );
+                setOverbreaks(overbreakData);
+
+            } else {
+                toast({ title: "Error Fetching Activity", description: activityResult.message, variant: "destructive" });
+                setAllActivity([]);
+            }
+
         } catch (error: any) {
-             toast({ title: "Error fetching users", description: error.message, variant: "destructive" });
-             setUsers([]);
+             toast({ title: "Error refreshing data", description: error.message, variant: "destructive" });
         } finally {
-            setIsLoadingUsers(false);
+            setIsLoadingData(false);
+            setIsLoadingUsers(false); // Backward compatibility for User Management loader
         }
-
-        const activitySnapshot = await getDocs(query(collection(db, "activity"), orderBy('timestamp', 'desc')));
-        const activityData = activitySnapshot.docs.map(d => ({id: d.id, ...d.data()} as ActivityLog));
-        setAllActivity(activityData);
-        
-        const today = new Date().toLocaleDateString();
-        const todayActivities = activityData.filter(a => a.date === today);
-
-        setStats(prev => ({
-            ...prev,
-            totalActivities: activityData.length,
-            todayBreaks: todayActivities.filter(a => a.action === 'Break Out').length,
-            todayLunches: todayActivities.filter(a => a.action === 'Lunch Out').length,
-        }));
-
-
-        await fetchOverbreaks();
-    }, [fetchOverbreaks, toast]);
+    }, [toast]);
 
     useEffect(() => {
         refreshData();
@@ -231,7 +226,7 @@ export default function AdminPage() {
         setSelectedShift('');
     };
 
-    const filterLogs = async () => {
+    const filterLogs = () => {
         if (!filterFromDate || !filterToDate) {
             toast({ title: "Error", description: "Please select both a start and end date.", variant: "destructive" });
             return false;
@@ -258,14 +253,14 @@ export default function AdminPage() {
         return true;
     }
 
-    const handlePreviewData = async () => {
-        if (await filterLogs()) {
+    const handlePreviewData = () => {
+        if (filterLogs()) {
             setIsPreviewModalOpen(true);
         }
     };
 
-    const handleExportPdf = async () => {
-        if (await filterLogs()) {
+    const handleExportPdf = () => {
+        if (filterLogs()) {
             const doc = new jsPDF();
             const tableColumn = ["Employee", "Date", "Time", "Type", "Duration (min)"];
             const tableRows: (string|number|null)[][] = [];
@@ -321,6 +316,17 @@ export default function AdminPage() {
         doc.text("Overbreak Alerts Report", 14, 15);
         doc.save(`Overbreaks_Report_${new Date().toLocaleDateString()}.pdf`);
     };
+
+    if (isLoadingData) {
+        return (
+            <AuthCheck adminOnly>
+                 <AppHeader isAdmin />
+                 <div className="flex h-[80vh] w-full items-center justify-center">
+                    <LoaderCircle className="h-12 w-12 animate-spin text-white" />
+                </div>
+            </AuthCheck>
+        );
+    }
 
     return (
     <AuthCheck adminOnly>
@@ -464,8 +470,7 @@ export default function AdminPage() {
                     </CardHeader>
                     <ScrollArea className="h-80 pr-4">
                         <div className="space-y-3">
-                            {isLoadingOverbreaks ? <p>Loading alerts...</p> : 
-                            overbreaks.length === 0 ? <p className="text-green-600">No overbreaks detected.</p> :
+                            {overbreaks.length === 0 ? <p className="text-green-600">No overbreaks detected.</p> :
                             overbreaks.map(o => (
                                 <div key={o.id} className="flex items-center justify-between p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
                                     <div>
