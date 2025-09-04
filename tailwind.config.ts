@@ -65,6 +65,12 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        'pantone-blue-1': '#0F4C75',
+        'pantone-blue-2': '#3282B8',
+        'pantone-blue-3': '#BBE1FA',
+        'pantone-green-1': '#0E4B99',
+        'pantone-green-2': '#2E8B57',
+        'pantone-green-3': '#98FB98',
       },
       borderRadius: {
         lg: 'var(--radius)',
