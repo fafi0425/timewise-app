@@ -1,4 +1,6 @@
 
+import { z } from 'zod';
+
 export interface User {
   uid: string;
   name: string;
@@ -29,7 +31,7 @@ export interface ActivityLog {
   employeeName: string;
   date: string;
   time: string;
-  action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In' | 'Work Ended';
+  action: 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In';
   duration: number | null;
   timestamp: number;
 }
@@ -44,3 +46,31 @@ export interface UserState {
 }
 
 export type Shift = 'morning' | 'mid' | 'night' | 'custom' | 'none';
+
+
+// Schemas for Timesheet Processing Flow
+export const ProcessTimesheetInputSchema = z.object({
+  timesheetEntries: z.array(z.any()).describe('An array of raw timesheet entries for a user.'),
+  shift: z.custom<Shift>().describe("The user's assigned shift (morning, mid, night, or custom)."),
+  shiftStart: z.string().optional().describe('The custom start time for the shift (HH:MM), required if shift is custom.'),
+  shiftEnd: z.string().optional().describe('The custom end time for the shift (HH:MM), required if shift is custom.'),
+});
+export type ProcessTimesheetInput = z.infer<typeof ProcessTimesheetInputSchema>;
+
+export const ProcessedDaySchema = z.object({
+    date: z.string(),
+    clockIn: z.string(),
+    clockOut: z.string(),
+    late: z.string(),
+    undertime: z.string(),
+    regularHours: z.string(),
+    otHours: z.string(),
+    totalHours: z.string(),
+});
+export type ProcessedDay = z.infer<typeof ProcessedDaySchema>;
+
+
+export const ProcessTimesheetOutputSchema = z.object({
+  processedDays: z.array(ProcessedDaySchema).describe('An array of processed daily timesheet data.'),
+});
+export type ProcessTimesheetOutput = z.infer<typeof ProcessTimesheetOutputSchema>;

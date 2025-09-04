@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LoaderCircle } from 'lucide-react';
 import { getDocs, collection, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { TimesheetEntry } from '@/lib/types';
-import { processTimesheet, type ProcessedDay } from '@/ai/flows/timesheet-flow';
+import type { TimesheetEntry, ProcessedDay } from '@/lib/types';
+import { processTimesheet } from '@/ai/flows/timesheet-flow';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 
 export default function TimesheetPage() {
