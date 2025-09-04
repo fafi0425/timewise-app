@@ -172,6 +172,10 @@ export default function AdminPage() {
     };
 
     const handleDeleteUser = async (uid: string) => {
+        if (users.find(u => u.uid === uid)?.role === 'Administrator') {
+            toast({ title: "Action Forbidden", description: "Cannot delete the main administrator account.", variant: "destructive" });
+            return;
+        }
         await deleteUser(uid);
         toast({ title: "Success", description: "User removed successfully. Note: Firebase Auth entry must be manually deleted from the Firebase Console." });
         await refreshData();
@@ -410,6 +414,7 @@ export default function AdminPage() {
                                 <SelectContent>
                                     <SelectItem value="Dealing">Dealing</SelectItem>
                                     <SelectItem value="CS/KYC">CS/KYC</SelectItem>
+                                    <SelectItem value="Admin">Admin</SelectItem>
                                 </SelectContent>
                             </Select>
                              <Select value={newUserRole} onValueChange={setNewUserRole}>
@@ -419,6 +424,7 @@ export default function AdminPage() {
                                     <SelectItem value="Team Leader">Team Leader</SelectItem>
                                     <SelectItem value="HR">HR</SelectItem>
                                     <SelectItem value="Employee">Employee</SelectItem>
+                                    <SelectItem value="Administrator">Administrator</SelectItem>
                                 </SelectContent>
                             </Select>
                             <Select value={newUserShift} onValueChange={(val) => setNewUserShift(val as Shift)}>
@@ -646,4 +652,5 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
-}
+
+    
