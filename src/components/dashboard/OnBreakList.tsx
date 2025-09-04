@@ -16,16 +16,24 @@ export default function OnBreakList() {
   const [onBreakUsers, setOnBreakUsers] = useState<OnBreakUser[]>([]);
 
   useEffect(() => {
-    const statesQuery = query(collection(db, "userStates"), where("currentState", "in", ["break", "lunch"]));
+    // The query now listens to the whole collection. The security rules will ensure
+    // that only documents with currentState 'break' or 'lunch' are actually sent.
+    const statesQuery = query(collection(db, "userStates"));
     
     const unsubscribe = onSnapshot(statesQuery, async (querySnapshot) => {
         const usersOnBreak: OnBreakUser[] = [];
-        if (querySnapshot.empty) {
+        
+        const filteredDocs = querySnapshot.docs.filter(doc => {
+            const state = doc.data() as UserState;
+            return state.currentState === 'break' || state.currentState === 'lunch';
+        });
+
+        if (filteredDocs.length === 0) {
             setOnBreakUsers([]);
             return;
         }
 
-        const userIds = querySnapshot.docs.map(doc => doc.id);
+        const userIds = filteredDocs.map(doc => doc.id);
         if (userIds.length === 0) {
             setOnBreakUsers([]);
             return;
@@ -38,7 +46,7 @@ export default function OnBreakList() {
             return acc;
         }, {} as Record<string, User>);
 
-        querySnapshot.forEach(doc => {
+        filteredDocs.forEach(doc => {
             const state = doc.data() as UserState;
             const user = usersData[doc.id];
             

@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
-import { authenticateUser, seedInitialData, signOutUser } from '@/lib/auth';
+import { authenticateUser, signOutUser } from '@/lib/auth';
 import { endWorkSession } from '@/hooks/useTimeTracker';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -54,8 +54,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setLoading(false);
     });
-
-    seedInitialData();
 
     return () => unsubscribe();
   }, []);

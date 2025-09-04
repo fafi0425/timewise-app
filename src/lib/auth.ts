@@ -27,20 +27,6 @@ const defaultAdmin: User = {
   shift: 'none',
 };
 
-// This function now ensures the admin user exists in Firestore.
-export const seedInitialData = async () => {
-    const adminRef = doc(db, 'users', defaultAdmin.uid);
-    const adminSnap = await getDoc(adminRef);
-
-    if (!adminSnap.exists()) {
-        console.log("Seeding default administrator into Firestore...");
-        const adminDataForDb = { ...defaultAdmin };
-        // Do not store the plaintext password in the database.
-        delete adminDataForDb.password; 
-        await setDoc(adminRef, adminDataForDb);
-    }
-};
-
 export const authenticateUser = async (email: string, pass: string): Promise<User | null> => {
   // Special case for local admin login, which doesn't use Firebase Auth.
   if (email === defaultAdmin.email && pass === defaultAdmin.password) {
@@ -48,6 +34,11 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     if (adminDoc.exists()) {
         return { uid: adminDoc.id, ...adminDoc.data() } as User;
     }
+    // If admin doesn't exist in DB, create it.
+    const adminDataForDb = { ...defaultAdmin };
+    delete adminDataForDb.password;
+    await setDoc(doc(db, 'users', defaultAdmin.uid), adminDataForDb);
+    return defaultAdmin;
   }
   
   try {
