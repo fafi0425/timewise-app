@@ -89,7 +89,7 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
     <header className="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <Link href="/" className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
               {isAdmin ? (
                 <Crown className="text-white" />
@@ -100,7 +100,7 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
             <h1 className="text-2xl font-bold text-white font-headline">
               {isAdmin ? 'Admin Dashboard' : 'TimeWise'}
             </h1>
-          </div>
+          </Link>
           {!isAdmin && (
             <div className="hidden md:block text-center">
                 <div className="text-xl font-bold text-white/90 font-headline">Terra Services & Technologies Inc</div>
