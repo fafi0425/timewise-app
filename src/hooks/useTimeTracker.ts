@@ -127,11 +127,15 @@ export default function useTimeTracker() {
         const q = query(
             timesheetRef, 
             where('uid', '==', user.uid), 
-            where('date', '==', new Date().toLocaleDateString()), 
-            orderBy('timestamp', 'desc')
+            where('date', '==', new Date().toLocaleDateString())
         );
         const timesheetSnapshot = await getDocs(q);
-        const latestTimesheetEntry = timesheetSnapshot.docs[0]?.data();
+        
+        const sortedEntries = timesheetSnapshot.docs
+            .map(doc => doc.data() as TimesheetEntry)
+            .sort((a, b) => b.timestamp - a.timestamp);
+
+        const latestTimesheetEntry = sortedEntries[0];
         
         if (latestTimesheetEntry && latestTimesheetEntry.action === 'Clock In') {
              setStatus(prev => ({...prev, ...initialState, isClockedIn: true, currentState: 'working'}));
