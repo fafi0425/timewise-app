@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Clock, Crown, LogOut, User as UserIcon, LayoutDashboard } from 'lucide-react';
+import { Clock, Crown, LogOut, User as UserIcon, LayoutDashboard, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -20,6 +20,70 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+  
+  const getNavButton = () => {
+    if (isAdmin) return null;
+
+    if (pathname === '/dashboard') {
+        return (
+            <>
+                <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 hidden sm:flex">
+                    <Link href="/timesheet">
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        My Timesheet
+                    </Link>
+                </Button>
+                 <Button asChild variant="ghost" className="bg-white/20 hover-bg-white/30 text-white px-4 py-2">
+                    <Link href="/profile">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        My Profile
+                    </Link>
+                </Button>
+            </>
+        );
+    }
+
+     if (pathname === '/timesheet') {
+         return (
+             <>
+                <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 hidden sm:flex">
+                    <Link href="/dashboard">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dashboard
+                    </Link>
+                </Button>
+                 <Button asChild variant="ghost" className="bg-white/20 hover-bg-white/30 text-white px-4 py-2">
+                    <Link href="/profile">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        My Profile
+                    </Link>
+                </Button>
+            </>
+         );
+    }
+    
+    if (pathname === '/profile') {
+        return (
+             <>
+                <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 hidden sm:flex">
+                    <Link href="/dashboard">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dashboard
+                    </Link>
+                </Button>
+                 <Button asChild variant="ghost" className="bg-white/20 hover-bg-white/30 text-white px-4 py-2">
+                    <Link href="/timesheet">
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        My Timesheet
+                    </Link>
+                </Button>
+            </>
+        );
+    }
+
+    return null;
+  }
+
 
   return (
     <header className="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-40">
@@ -59,23 +123,9 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
             <div className="text-white/80 text-sm hidden sm:block">
               <span className="font-code">{time}</span>
             </div>
-             {!isAdmin && (
-                pathname === '/profile' ? (
-                    <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2">
-                        <Link href="/dashboard">
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            Dashboard
-                        </Link>
-                    </Button>
-                ) : (
-                    <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2">
-                        <Link href="/profile">
-                            <UserIcon className="mr-2 h-4 w-4" />
-                            My Profile
-                        </Link>
-                    </Button>
-                )
-            )}
+             
+             {getNavButton()}
+
             <Button
               onClick={logout}
               variant="ghost"
