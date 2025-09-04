@@ -215,16 +215,33 @@ export default function AdminPage() {
             return;
         }
 
-        const result = await assignUserShift({ userId: selectedUser.uid, shift: selectedShift });
+        const originalUsers = [...users];
+        const originalShift = selectedUser.shift;
 
-        if (result.success) {
-            toast({ title: "Success", description: result.message });
-            await refreshData();
-        } else {
-            toast({ title: "Error", description: result.message, variant: "destructive" });
+        // Optimistic update
+        const updatedUsers = users.map(u => 
+            u.uid === selectedUser.uid ? { ...u, shift: selectedShift as Shift } : u
+        );
+        setUsers(updatedUsers);
+        setIsShiftModalOpen(false);
+        
+        try {
+            const result = await assignUserShift({ userId: selectedUser.uid, shift: selectedShift as Shift });
+
+            if (result.success) {
+                toast({ title: "Success", description: result.message });
+                // No need to refresh all data, the UI is already updated.
+            } else {
+                // Revert on failure
+                setUsers(originalUsers);
+                toast({ title: "Error", description: result.message, variant: "destructive" });
+            }
+        } catch (error) {
+            // Revert on error
+            setUsers(originalUsers);
+            toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
         }
         
-        setIsShiftModalOpen(false);
         setSelectedUser(null);
         setSelectedShift('');
     };
@@ -671,3 +688,4 @@ export default function AdminPage() {
     );
 
     
+
