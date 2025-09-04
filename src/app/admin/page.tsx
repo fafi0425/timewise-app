@@ -580,7 +580,7 @@ export default function AdminPage() {
                   <DialogDescription>
                     Update the user's details below.
                   </DialogDescription>
-                </Header>
+                </DialogHeader>
                 {editingUser && (
                 <div className="py-4 space-y-4">
                     <div>
@@ -674,3 +674,5 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
+
+    
