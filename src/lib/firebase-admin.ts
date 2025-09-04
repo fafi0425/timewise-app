@@ -1,7 +1,8 @@
+
 'use server';
 import 'server-only';
 import admin from 'firebase-admin';
-import type { User, ActivityLog, Shift } from './types';
+import type { User, ActivityLog, Shift, TimesheetEntry } from './types';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { z } from 'zod';
@@ -88,6 +89,31 @@ export async function getAllActivityAction(): Promise<{ success: boolean, messag
     };
   }
 }
+
+export async function getAllTimesheetAction(): Promise<{ success: boolean, message: string, timesheet?: TimesheetEntry[] }> {
+    try {
+      const db = getDb();
+      const timesheetCol = db.collection('timesheet').orderBy('timestamp', 'desc');
+      const timesheetSnapshot = await timesheetCol.get();
+  
+      if (timesheetSnapshot.empty) {
+          return { success: true, message: 'No timesheet entries found.', timesheet: [] };
+      }
+  
+      const timesheetList = timesheetSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimesheetEntry));
+  
+      return { success: true, message: 'Timesheet entries retrieved.', timesheet: timesheetList };
+    } catch (error) {
+       const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error("Error fetching timesheet with Admin SDK:", errorMessage);
+      return {
+        success: false,
+        message: `Failed to retrieve timesheet entries: ${errorMessage}`,
+        timesheet: [],
+      };
+    }
+  }
 
 // New function to get all users from Firestore
 export async function getAllUsersFromFirestore(): Promise<{ success: boolean, users: User[] }> {

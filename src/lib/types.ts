@@ -10,13 +10,26 @@ export interface User {
   photoURL?: string;
 }
 
+export type TimesheetAction = 'Clock In' | 'Clock Out';
+
+export interface TimesheetEntry {
+  id: string;
+  uid: string;
+  employeeName: string;
+  date: string;
+  time: string;
+  action: TimesheetAction;
+  timestamp: number;
+}
+
+
 export interface ActivityLog {
   id: string;
   uid: string;
   employeeName: string;
   date: string;
   time: string;
-  action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In' | 'Work Ended' | 'Clock In' | 'Clock Out';
+  action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In' | 'Work Ended';
   duration: number | null;
   timestamp: number;
 }

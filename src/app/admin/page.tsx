@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getAllActivityAction } from '@/lib/firebase-admin';
-import type { User, ActivityLog, Shift } from '@/lib/types';
+import { getAllUsersAction, getAllActivityAction, getAllTimesheetAction } from '@/lib/firebase-admin';
+import type { User, ActivityLog, Shift, TimesheetEntry } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
@@ -33,6 +33,8 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import TimesheetCard from '@/components/admin/TimesheetCard';
+
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -55,6 +57,7 @@ export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
+    const [timesheet, setTimesheet] = useState<TimesheetEntry[]>([]);
     const [overbreaks, setOverbreaks] = useState<any[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     
@@ -84,9 +87,10 @@ export default function AdminPage() {
     const refreshData = useCallback(async () => {
         setIsLoadingData(true);
         try {
-            const [usersResult, activityResult] = await Promise.all([
+            const [usersResult, activityResult, timesheetResult] = await Promise.all([
                 getAllUsersAction(),
-                getAllActivityAction()
+                getAllActivityAction(),
+                getAllTimesheetAction()
             ]);
 
             if (usersResult.success && usersResult.users) {
@@ -119,6 +123,13 @@ export default function AdminPage() {
             } else {
                 toast({ title: "Error Fetching Activity", description: activityResult.message, variant: "destructive" });
                 setAllActivity([]);
+            }
+
+            if (timesheetResult.success && timesheetResult.timesheet) {
+                setTimesheet(timesheetResult.timesheet);
+            } else {
+                toast({ title: "Error Fetching Timesheet", description: timesheetResult.message, variant: "destructive" });
+                setTimesheet([]);
             }
 
         } catch (error: any) {
@@ -216,8 +227,7 @@ export default function AdminPage() {
         }
 
         const originalUsers = [...users];
-        const originalShift = selectedUser.shift;
-
+        
         // Optimistic update
         const updatedUsers = users.map(u => 
             u.uid === selectedUser.uid ? { ...u, shift: selectedShift as Shift } : u
@@ -261,7 +271,7 @@ export default function AdminPage() {
             const isEmployeeMatch = filterEmployee === 'all' || log.uid === filterEmployee;
             const isBreakOrLunch = log.action === 'Break In' || log.action === 'Lunch In';
 
-            return isDateInRange && isEmployeeMatch && log.duration;
+            return isDateInRange && isEmployeeMatch && log.duration && isBreakOrLunch;
         });
 
         if (filtered.length === 0) {
@@ -508,33 +518,40 @@ export default function AdminPage() {
                  </div>
             </Card>
 
-            <div className="grid lg:grid-cols-2 gap-6 mb-8">
-                <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                    <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
-                        <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
-                            <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
-                        </CardTitle>
-                        <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
-                            <FileDown className="mr-2 h-4 w-4" /> Download PDF
-                        </Button>
-                    </CardHeader>
-                    <ScrollArea className="h-80 pr-4">
-                        <div className="space-y-3">
-                            {overbreaks.length === 0 ? <p className="text-green-600">No overbreaks detected.</p> :
-                            overbreaks.map(o => (
-                                <div key={o.id} className="flex items-center justify-between p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
-                                    <div>
-                                        <div className="font-medium text-red-700">{o.employeeName}</div>
-                                        <div className="text-sm text-red-600">{o.action.replace(' In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
-                                        <div className="text-xs text-gray-500">{o.date} at {o.time}</div>
+            <div className="grid lg:grid-cols-3 gap-6 mb-8">
+                <div className="lg:col-span-1">
+                    <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
+                        <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
+                            <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
+                                <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
+                            </CardTitle>
+                            <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
+                                <FileDown className="mr-2 h-4 w-4" /> Download PDF
+                            </Button>
+                        </CardHeader>
+                        <ScrollArea className="h-80 pr-4">
+                            <div className="space-y-3">
+                                {overbreaks.length === 0 ? <p className="text-green-600">No overbreaks detected.</p> :
+                                overbreaks.map(o => (
+                                    <div key={o.id} className="flex items-center justify-between p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                                        <div>
+                                            <div className="font-medium text-red-700">{o.employeeName}</div>
+                                            <div className="text-sm text-red-600">{o.action.replace(' In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
+                                            <div className="text-xs text-gray-500">{o.date} at {o.time}</div>
+                                        </div>
+                                        <div className="text-red-500 text-xl">⚠️</div>
                                     </div>
-                                    <div className="text-red-500 text-xl">⚠️</div>
-                                </div>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </Card>
-                <DailySummaryCard activityLogs={allActivity} />
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </Card>
+                </div>
+                 <div className="lg:col-span-1">
+                    <DailySummaryCard activityLogs={allActivity} />
+                 </div>
+                 <div className="lg:col-span-1">
+                    <TimesheetCard timesheet={timesheet} />
+                 </div>
             </div>
 
             <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
@@ -688,4 +705,5 @@ export default function AdminPage() {
     );
 
     
+
 
