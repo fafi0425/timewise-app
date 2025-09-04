@@ -29,10 +29,10 @@ export default function LandingPage() {
               <span className="ml-2 text-lg font-semibold text-white font-headline">TimeWise</span>
             </Link>
             <nav className="ml-auto flex gap-4 sm:gap-6">
-              <Button asChild variant="ghost" className="text-sm font-medium text-white hover:underline underline-offset-4">
+              <Button asChild variant="ghost" className="text-sm font-medium text-white hover:bg-white/20 hover:text-white">
                 <Link href="/login">Sign In</Link>
               </Button>
-              <Button asChild className="text-sm font-medium">
+              <Button asChild variant="secondary">
                 <Link href="/register">Sign Up</Link>
               </Button>
             </nav>
@@ -52,7 +52,7 @@ export default function LandingPage() {
                       </p>
                     </div>
                     <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                      <Button asChild size="lg">
+                      <Button asChild size="lg" variant="secondary">
                         <Link href="/register">Get Started</Link>
                       </Button>
                     </div>
