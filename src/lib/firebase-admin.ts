@@ -1,7 +1,7 @@
 'use server';
 import 'server-only';
 import admin from 'firebase-admin';
-import type { User, ActivityLog } from './types';
+import type { User, ActivityLog, Shift } from './types';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { z } from 'zod';
@@ -116,5 +116,17 @@ export async function deleteUserFromFirestore(uid: string): Promise<void> {
     } catch (e) {
         console.error(`Error deleting user ${uid} from Firestore:`, e);
         throw e;
+    }
+}
+
+export async function updateUserShiftInFirestore(userId: string, shift: Shift): Promise<void> {
+    const db = getDb();
+    const userRef = db.collection('users').doc(userId);
+    console.log(`Updating shift for user ${userId} to ${shift} in Firestore.`);
+    try {
+        await userRef.update({ shift: shift });
+    } catch (error) {
+        console.error(`Error updating shift for user ${userId} in Firestore:`, error);
+        throw error;
     }
 }

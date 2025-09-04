@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { Shift } from '@/lib/types';
+import { updateUserShiftInFirestore } from '@/lib/firebase-admin';
 
 const AssignUserShiftInputSchema = z.object({
   userId: z.string().describe('The unique identifier of the user.'),
@@ -17,12 +17,9 @@ const AssignUserShiftInputSchema = z.object({
 });
 export type AssignUserShiftInput = z.infer<typeof AssignUserShiftInputSchema>;
 
-// The output will now include the userId and shift to be handled by the client.
 const AssignUserShiftOutputSchema = z.object({
   success: z.boolean().describe('Whether the shift assignment was successful.'),
   message: z.string().describe('A message indicating the result of the operation.'),
-  userId: z.string().optional().describe('The unique identifier of the user.'),
-  shift: z.enum(['morning', 'mid', 'night', 'custom', 'none']).optional().describe('The shift assigned to the user.'),
 });
 export type AssignUserShiftOutput = z.infer<typeof AssignUserShiftOutputSchema>;
 
@@ -39,19 +36,16 @@ const assignUserShiftFlow = ai.defineFlow(
     outputSchema: AssignUserShiftOutputSchema,
   },
   async ({ userId, shift }) => {
-    // This flow will now simply validate and pass the data back to the client.
-    // The client will be responsible for the actual localStorage update.
-    // This avoids server-side code trying to interact with client-side storage.
     try {
+      await updateUserShiftInFirestore(userId, shift);
       return {
         success: true,
         message: 'User shift updated successfully.',
-        userId: userId,
-        shift: shift,
       };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error(`Error updating shift for user ${userId}:`, errorMessage);
       return {
         success: false,
         message: `Failed to update user shift: ${errorMessage}`,

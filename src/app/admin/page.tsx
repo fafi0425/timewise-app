@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { addUser, deleteUser, updateUserShift, updateUser } from '@/lib/auth';
+import { addUser, deleteUser, updateUser } from '@/lib/auth';
 import { getAllUsersAction, getAllActivityAction } from '@/lib/firebase-admin';
 import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
@@ -217,14 +217,9 @@ export default function AdminPage() {
 
         const result = await assignUserShift({ userId: selectedUser.uid, shift: selectedShift });
 
-        if (result.success && result.userId && result.shift) {
-            try {
-                await updateUserShift(result.userId, result.shift);
-                toast({ title: "Success", description: result.message });
-                await refreshData();
-            } catch (error: any) {
-                 toast({ title: "Error", description: error.message, variant: "destructive" });
-            }
+        if (result.success) {
+            toast({ title: "Success", description: result.message });
+            await refreshData();
         } else {
             toast({ title: "Error", description: result.message, variant: "destructive" });
         }
