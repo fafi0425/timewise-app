@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow users to upload profile pictures only for their own UID
+    // and ensure the file is an image and under 1MB.
+    match /profile-pictures/{userId} {
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 1 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      
+      // Allow anyone to read profile pictures
+      allow read;
+    }
+  }
+}

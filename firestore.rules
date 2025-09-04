@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is an Administrator
+    function isAdministrator() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Allow read/write access if the user is the owner of the document OR is an administrator.
+      allow read, write: if request.auth.uid == userId || isAdministrator();
+    }
+    
+    // Rules for 'userStates'
+    match /userStates/{userId} {
+        // Any authenticated user can read the status of any other user (for OnBreakList)
+        allow read: if request.auth != null;
+        // Only the user themselves can write to their own state
+        allow write: if request.auth.uid == userId;
+    }
+
+    // Rules for the 'activity' collection
+    match /activity/{activityId} {
+      // Any authenticated user can read all activity (for admin/dashboard lists)
+      allow read: if request.auth != null;
+      // Users can only create their own activity logs
+      allow create: if request.auth.uid == request.resource.data.uid;
+    }
+  }
+}
