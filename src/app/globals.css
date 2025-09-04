@@ -56,7 +56,7 @@
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
-    background: linear-gradient(135deg, #0F4C75 0%, #3282B8 50%, #2E8B57 100%);
+    background-color: hsl(var(--background));
     background-attachment: fixed;
   }
   .card-shadow {
