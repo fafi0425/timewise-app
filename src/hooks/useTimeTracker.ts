@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
@@ -56,7 +57,8 @@ export default function useTimeTracker() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [status, setStatus] = useState<UserState>({
-    currentState: 'working',
+    currentState: 'clocked_out',
+    isClockedIn: false,
     breakStartTime: null,
     lunchStartTime: null,
     totalBreakMinutes: 0,
@@ -96,24 +98,32 @@ export default function useTimeTracker() {
     
     const fetchInitialData = async () => {
         const userTodayLogs = await getActivityLog(user.uid);
-        setActivityLog(userTodayLogs.filter(log => log.date === new Date().toLocaleDateString()));
+        const todayLogs = userTodayLogs.filter(log => log.date === new Date().toLocaleDateString())
+        setActivityLog(todayLogs);
 
         const stateDocRef = doc(db, 'userStates', user.uid);
         const stateDocSnap = await getDoc(stateDocRef);
+        
+        let initialState = status;
 
         if (stateDocSnap.exists()) {
-            const savedState = stateDocSnap.data() as UserState;
-             if (savedState.currentState && savedState.currentState !== 'working') {
-                setStatus(savedState);
-            }
-        } else if (userTodayLogs.filter(l => l.action === 'Work Started').length === 0) {
-            logActivity('Work Started');
+            initialState = stateDocSnap.data() as UserState;
+        }
+        
+        // Determine initial clocked-in state from today's logs
+        const lastClockIn = todayLogs.find(l => l.action === 'Clock In');
+        const lastClockOut = todayLogs.find(l => l.action === 'Clock Out');
+
+        if (lastClockIn && (!lastClockOut || lastClockIn.timestamp > lastClockOut.timestamp)) {
+             setStatus(prev => ({...prev, ...initialState, isClockedIn: true}));
+        } else {
+             setStatus(prev => ({...prev, ...initialState, isClockedIn: false, currentState: 'clocked_out'}));
         }
     };
     
     fetchInitialData();
 
-  }, [user, logActivity]);
+  }, [user]);
   
   useEffect(() => {
     if(user) {
@@ -121,6 +131,24 @@ export default function useTimeTracker() {
         setDoc(stateDocRef, status, { merge: true });
     }
   }, [status, user]);
+
+  const clockIn = useCallback(() => {
+    setStatus(prev => ({...prev, isClockedIn: true, currentState: 'working'}));
+    logActivity('Clock In');
+    toast({ title: "Clocked In", description: "Your work session has started." });
+  }, [logActivity, toast]);
+
+  const clockOut = useCallback(() => {
+    // Cannot clock out if on break or lunch
+    if (status.currentState === 'break' || status.currentState === 'lunch') {
+        toast({ title: "Action Required", description: "Please end your break/lunch before clocking out.", variant: "destructive" });
+        return;
+    }
+    setStatus(prev => ({...prev, isClockedIn: false, currentState: 'clocked_out'}));
+    logActivity('Clock Out');
+    toast({ title: "Clocked Out", description: "Your work session has ended." });
+  }, [logActivity, toast, status.currentState]);
+
 
   const startAction = useCallback((type: 'break' | 'lunch') => {
     const now = new Date().toISOString();
@@ -235,5 +263,5 @@ export default function useTimeTracker() {
     totalWorkTime: `${Math.floor((480 - status.totalBreakMinutes - status.totalLunchMinutes) / 60)}h ${ (480 - status.totalBreakMinutes - status.totalLunchMinutes) % 60}m`
   }
 
-  return { status, logActivity, activityLog, summary, countdown, startAction, endAction };
+  return { status, logActivity, activityLog, summary, countdown, startAction, endAction, clockIn, clockOut };
 }

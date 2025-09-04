@@ -16,13 +16,14 @@ export interface ActivityLog {
   employeeName: string;
   date: string;
   time: string;
-  action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In' | 'Work Ended';
+  action: 'Work Started' | 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In' | 'Work Ended' | 'Clock In' | 'Clock Out';
   duration: number | null;
   timestamp: number;
 }
 
 export interface UserState {
-  currentState: 'working' | 'break' | 'lunch';
+  currentState: 'working' | 'break' | 'lunch' | 'clocked_out';
+  isClockedIn: boolean;
   totalBreakMinutes: number;
   totalLunchMinutes: number;
   breakStartTime: string | null;

@@ -38,7 +38,8 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
     const userStateSnap = await getDoc(userStateRef);
     if (!userStateSnap.exists()) {
         const initialState: UserState = {
-            currentState: 'working',
+            currentState: 'clocked_out',
+            isClockedIn: false,
             breakStartTime: null,
             lunchStartTime: null,
             totalBreakMinutes: 0,
@@ -88,7 +89,8 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         
         const userStateRef = doc(db, 'userStates', firebaseUser.uid);
         const initialState: UserState = {
-            currentState: 'working',
+            currentState: 'clocked_out',
+            isClockedIn: false,
             breakStartTime: null,
             lunchStartTime: null,
             totalBreakMinutes: 0,

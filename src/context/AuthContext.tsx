@@ -85,7 +85,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     if(user && user.role !== 'Administrator'){
-       await endWorkSession(user);
+       const userStateDoc = await getDoc(doc(db, 'userStates', user.uid));
+       if (userStateDoc.exists() && userStateDoc.data().isClockedIn) {
+           await endWorkSession(user);
+       }
     }
     try {
         await signOutUser();

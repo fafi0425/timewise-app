@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -22,6 +23,10 @@ export default function StatusCard({ status, countdown }: StatusCardProps) {
         return 'On Break';
       case 'lunch':
         return 'At Lunch';
+      case 'working':
+        return 'Working';
+      case 'clocked_out':
+        return 'Clocked Out';
       default:
         return 'Working';
     }
@@ -37,8 +42,10 @@ export default function StatusCard({ status, countdown }: StatusCardProps) {
             return formatTime(status.breakStartTime);
         case 'lunch':
             return formatTime(status.lunchStartTime);
-        default:
+        case 'working':
             return 'Currently on the clock';
+        case 'clocked_out':
+            return 'Session has not started';
     }
   };
 
@@ -49,7 +56,8 @@ export default function StatusCard({ status, countdown }: StatusCardProps) {
         <div
           className={cn(
             'w-4 h-4 rounded-full animate-pulse',
-            status.currentState === 'working' ? 'bg-green-500' : 'bg-yellow-500'
+            status.isClockedIn && status.currentState === 'working' ? 'bg-green-500' : 
+            status.isClockedIn ? 'bg-yellow-500' : 'bg-red-500'
           )}
         />
       </CardHeader>
