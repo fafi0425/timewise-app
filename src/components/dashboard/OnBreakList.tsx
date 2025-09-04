@@ -18,7 +18,7 @@ export default function OnBreakList() {
   useEffect(() => {
     // This query now specifically asks for users on break or lunch.
     // The security rules must allow this specific query.
-    const statesQuery = query(collection(db, "userStates"), where("currentState", "in", ["break", "lunch"]));
+    const statesQuery = query(collection(db, "userStates"));
     
     const unsubscribe = onSnapshot(statesQuery, async (querySnapshot) => {
         const userStates: {id: string, data: UserState}[] = [];
