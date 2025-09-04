@@ -10,10 +10,12 @@ export default function LoginPage() {
     <AuthLayout>
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md card-shadow">
-            <Clock className="h-12 w-12 text-white" />
-          </div>
-          <h1 className="font-headline text-4xl font-bold text-white mb-2">TimeWise</h1>
+          <Link href="/" className="inline-block" aria-label="Go to landing page">
+            <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md card-shadow transition-transform hover:scale-105">
+              <Clock className="h-12 w-12 text-white" />
+            </div>
+            <h1 className="font-headline text-4xl font-bold text-white mb-2">TimeWise</h1>
+          </Link>
           <p className="text-lg text-foreground">
             Welcome To Terra Services & Technology Inc! Please sign in to continue.
           </p>
