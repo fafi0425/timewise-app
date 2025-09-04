@@ -51,10 +51,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (loading) return;
 
-    if (!user && pathname !== '/login' && pathname !== '/register') {
+    // Publicly accessible paths
+    const publicPaths = ['/login', '/register', '/'];
+
+    if (!user && !publicPaths.includes(pathname)) {
       router.push('/login');
     } else if (user) {
-      if (pathname === '/login' || pathname === '/register' || pathname === '/') {
+      // If user is logged in and on a public page (except the landing page), redirect them
+      if (publicPaths.slice(0,2).includes(pathname)) {
         if (user.role === 'Administrator') {
           router.push('/admin');
         } else {
