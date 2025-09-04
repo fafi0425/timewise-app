@@ -31,6 +31,7 @@ import { cleanupStaleUsers } from '@/ai/flows/cleanup-stale-users';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import DailySummaryCard from '@/components/admin/DailySummaryCard';
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -506,22 +507,24 @@ export default function AdminPage() {
                         </div>
                     </ScrollArea>
                 </Card>
-                <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                    <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
-                     <ScrollArea className="h-80 pr-4">
-                        <div className="space-y-3">
-                            {allActivity.slice(0, 20).map((a, index) => (
-                               <div key={`${a.id}-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                                   <div>
-                                       <p className="font-medium text-card-foreground">{a.employeeName} <span className="text-sm text-muted-foreground">{a.action}</span></p>
-                                        <p className="text-xs text-muted-foreground">{a.date} {a.time}</p>
-                                   </div>
-                               </div>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </Card>
+                <DailySummaryCard activityLogs={allActivity} />
             </div>
+
+            <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
+                <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
+                 <ScrollArea className="h-80 pr-4">
+                    <div className="space-y-3">
+                        {allActivity.slice(0, 20).map((a, index) => (
+                           <div key={`${a.id}-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                               <div>
+                                   <p className="font-medium text-card-foreground">{a.employeeName} <span className="text-sm text-muted-foreground">{a.action}</span></p>
+                                    <p className="text-xs text-muted-foreground">{a.date} {a.time}</p>
+                               </div>
+                           </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </Card>
             
             <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
               <DialogContent>
@@ -652,5 +655,3 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
-
-    
