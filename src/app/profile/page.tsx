@@ -36,7 +36,7 @@ export default function ProfilePage() {
 
     if (!user) return null;
     
-    const userShift = user.shift && user.shift !== 'none' ? SHIFTS[user.shift]?.name : 'Not Assigned';
+    const userShift = user.shift && SHIFTS[user.shift] ? SHIFTS[user.shift].name : 'Not Assigned';
 
     return (
         <AuthCheck>
