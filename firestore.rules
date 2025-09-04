@@ -1,49 +1,45 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    function isOwner(uid) {
-      return request.auth.uid == uid;
-    }
-
+    // Helper function to check for Administrator role
     function isAdmin() {
-      // Ensure the user document exists before trying to access its data.
-      return isAuth() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
     }
 
     // Rules for the 'users' collection
     match /users/{userId} {
-      // Any authenticated user can read the list of users or get a specific user.
-      // This is needed for components like the shift roster.
-      allow read: if isAuth();
-      // Only the user themselves or an admin can write to their document.
-      allow write: if isOwner(userId) || isAdmin();
+      // Admins can do anything
+      allow read, write: if isAdmin();
+      // Any authenticated user can list/read user documents (needed for rosters, profiles)
+      // but can only write/update their own document.
+      allow list, get: if request.auth != null;
+      allow update, delete: if request.auth.uid == userId;
+      // All other users cannot create new user documents directly, must use server-side logic
+      allow create: if false;
     }
 
     // Rules for the 'userStates' collection
     match /userStates/{userId} {
-       // Any authenticated user can read the list of user states or get a specific one.
-       // This is required for real-time presence features like the "On Break" list.
-      allow read: if isAuth();
-      // Only the user themselves or an admin can write to their state.
-      allow write: if isOwner(userId) || isAdmin();
+       // Admins can do anything
+      allow read, write: if isAdmin();
+      // Any authenticated user can list/read states (for on-break list)
+      allow list, get: if request.auth != null;
+      // Users can only create/update their own state
+      allow create, update: if request.auth.uid == userId;
     }
-
+    
     // Rules for 'activity' and 'timesheet' collections
     match /{collection}/{docId} where collection in ['activity', 'timesheet'] {
-      // Admins can read any document.
-      // Users can only read their own documents (either single or in a list query).
-      allow read: if isAdmin() || (isAuth() && resource.data.uid == request.auth.uid);
-      
-      // Admins can write to any document.
-      // Users can only create new documents for themselves. They cannot update or delete.
-      allow write: if isAdmin() || (isAuth() && request.resource.data.uid == request.auth.uid);
+        // Admins can do anything
+        allow read, write: if isAdmin();
+        // Users can create their own logs
+        allow create: if request.auth.uid == request.resource.data.uid;
+        // Users can read/list only their own logs
+        allow get: if request.auth.uid == resource.data.uid;
+        allow list: if request.auth.uid == request.query.where.uid;
     }
   }
 }
