@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, Crown, LogOut, User as UserIcon, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 
 export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
   const [time, setTime] = useState('');
@@ -42,6 +43,19 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
             </div>
           )}
           <div className="flex items-center space-x-4">
+             {user && (
+                <div className="flex items-center space-x-2">
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.photoURL} alt={user.name} />
+                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                            {user.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                    </Avatar>
+                     <span className="text-white/80 text-sm hidden sm:block font-medium">
+                        {user.name}
+                    </span>
+                </div>
+            )}
             <div className="text-white/80 text-sm hidden sm:block">
               <span className="font-code">{time}</span>
             </div>

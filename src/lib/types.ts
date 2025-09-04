@@ -7,6 +7,7 @@ export interface User {
   role: 'Manager' | 'Team Leader' | 'HR' | 'Employee' | 'Administrator';
   password?: string;
   shift?: Shift;
+  photoURL?: string;
 }
 
 export interface ActivityLog {

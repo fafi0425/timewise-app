@@ -32,6 +32,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -452,14 +453,22 @@ export default function AdminPage() {
                         <div className="space-y-2">
                            {users.map(user => (
                                <div key={user.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                                   <div>
-                                       <div className="font-medium text-card-foreground">{user.name}</div>
-                                       <div className="text-sm text-muted-foreground">{user.email}</div>
-                                        <div className="text-xs text-muted-foreground mt-1 space-x-1">
-                                            <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
-                                            <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
-                                            {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none'>]?.name}</span>}
-                                        </div>
+                                   <div className="flex items-center gap-3">
+                                       <Avatar>
+                                            <AvatarImage src={user.photoURL} alt={user.name} />
+                                            <AvatarFallback>
+                                                {user.name.split(' ').map(n => n[0]).join('')}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                       <div>
+                                           <div className="font-medium text-card-foreground">{user.name}</div>
+                                           <div className="text-sm text-muted-foreground">{user.email}</div>
+                                            <div className="text-xs text-muted-foreground mt-1 space-x-1">
+                                                <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
+                                                <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
+                                                {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none'>]?.name}</span>}
+                                            </div>
+                                       </div>
                                    </div>
                                     <div className="flex items-center gap-1">
                                      <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10" disabled={user.role === 'Administrator'}>
@@ -571,6 +580,10 @@ export default function AdminPage() {
                     <div>
                         <Label htmlFor="edit-name">Full Name</Label>
                         <Input id="edit-name" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} />
+                    </div>
+                     <div>
+                        <Label htmlFor="edit-photo">Photo URL</Label>
+                        <Input id="edit-photo" value={editingUser.photoURL} onChange={e => setEditingUser({...editingUser, photoURL: e.target.value})} />
                     </div>
                     <div>
                         <Label htmlFor="edit-department">Department</Label>

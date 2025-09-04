@@ -79,7 +79,8 @@ export const addUser = async (newUser: Omit<User, 'uid'>): Promise<User | null> 
         const userForDb: Omit<User, 'password'> = { 
             ...newUser, 
             uid: firebaseUser.uid,
-            shift: newUser.shift || 'none'
+            shift: newUser.shift || 'none',
+            photoURL: '',
         };
         delete (userForDb as Partial<User>).password; 
         
@@ -126,6 +127,13 @@ export const updateUserShift = async (userId: string, shift: Shift): Promise<voi
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
         shift: shift
+    });
+};
+
+export const updateUserProfilePicture = async (userId: string, photoURL: string): Promise<void> => {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+        photoURL: photoURL
     });
 };
 
