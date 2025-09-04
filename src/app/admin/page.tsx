@@ -77,6 +77,7 @@ export default function AdminPage() {
     const [filterFromDate, setFilterFromDate] = useState('');
     const [filterToDate, setFilterToDate] = useState('');
     const [filterEmployee, setFilterEmployee] = useState('all');
+    const [isCleaning, setIsCleaning] = useState(false);
 
     const { toast } = useToast();
 
@@ -325,7 +326,8 @@ export default function AdminPage() {
     };
 
     const handleCleanupUsers = async () => {
-        const result = await cleanupStaleUsers({ users });
+        setIsCleaning(true);
+        const result = await cleanupStaleUsers({});
         toast({
             title: result.success ? "Cleanup Complete" : "Cleanup Failed",
             description: result.message,
@@ -334,6 +336,7 @@ export default function AdminPage() {
         if (result.success && result.cleanedUserIds && result.cleanedUserIds.length > 0) {
             refreshData();
         }
+        setIsCleaning(false);
     };
 
     if (isLoadingData) {
@@ -403,7 +406,10 @@ export default function AdminPage() {
             <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
                 <div className="flex justify-between items-center mb-6">
                  <CardTitle className="text-xl font-semibold text-card-foreground font-headline">User Management</CardTitle>
-                 <Button variant="secondary" onClick={handleCleanupUsers}><CheckCircle className="mr-2 h-4 w-4" />Cleanup Users</Button>
+                 <Button variant="secondary" onClick={handleCleanupUsers} disabled={isCleaning}>
+                     {isCleaning ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                     Cleanup Users
+                 </Button>
                 </div>
                  <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
                     <div>
@@ -574,7 +580,7 @@ export default function AdminPage() {
                   <DialogDescription>
                     Update the user's details below.
                   </DialogDescription>
-                </DialogHeader>
+                </Header>
                 {editingUser && (
                 <div className="py-4 space-y-4">
                     <div>
