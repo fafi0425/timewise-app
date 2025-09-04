@@ -1,23 +1,55 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId || request.auth.token.role == 'Administrator';
-    }
-    
-    match /userStates/{userId} {
-        allow read, write: if request.auth.uid == userId;
+
+    // Helper function to check if a user is an administrator
+    function isAdmin(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role == 'Administrator';
     }
 
-    match /activity/{activityId} {
-      allow read: if request.auth != null;
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Any authenticated user can read their own profile
+      // An administrator can read any user's profile
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin(request.auth.uid));
+
+      // Users can update their own profile data (e.g. name, photoURL)
+      // We prevent them from changing their own role or department.
+      allow update: if request.auth.uid == userId && !(request.resource.data.role is string) && !(request.resource.data.department is string);
+      
+      // Only administrators can write/update role, department, and shift information.
+      // This is handled via server-side logic (Admin SDK), so client-side writes are denied.
+      allow create, write: if false; 
+    }
+
+    // Rules for user state (current status, break times, etc.)
+    match /userStates/{userId} {
+      // Users can read and write to their own state document
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Rules for the general activity log (breaks, lunches)
+    match /activity/{logId} {
+      // An administrator can read all activity logs for reporting
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
+      
+      // A user can read their own activity logs
+      allow read: if request.auth.uid == resource.data.uid;
+
+      // A user can create a new activity log for themselves
       allow create: if request.auth.uid == request.resource.data.uid;
     }
     
+    // Rules for the timesheet (Clock In / Clock Out)
     match /timesheet/{entryId} {
+       // An administrator can read all timesheet entries
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
+      
+      // A user can read their own timesheet entries
       allow read: if request.auth.uid == resource.data.uid;
+      
+      // A user can create a new timesheet entry for themselves
       allow create: if request.auth.uid == request.resource.data.uid;
     }
   }
