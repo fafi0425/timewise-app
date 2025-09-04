@@ -36,22 +36,35 @@ export default function LoginForm() {
       return;
     }
 
-    const user = await login(email, password);
-
-    if (user) {
-      toast({
-        title: 'Login Successful',
-        description: `Welcome back, ${user.name}!`,
-      });
-      router.push(user.role === 'Administrator' ? '/admin' : '/dashboard');
-    } else {
-      toast({
-        title: 'Login Failed',
-        description: 'Invalid email or password. Please try again.',
-        variant: 'destructive',
-      });
+    try {
+        const user = await login(email, password);
+        if (user) {
+          toast({
+            title: 'Login Successful',
+            description: `Welcome back, ${user.name}!`,
+          });
+          // This is the definitive redirect logic
+          if (user.role === 'Administrator') {
+            router.push('/admin');
+          } else {
+            router.push('/dashboard');
+          }
+        } else {
+          toast({
+            title: 'Login Failed',
+            description: 'Invalid email or password. Please try again.',
+            variant: 'destructive',
+          });
+        }
+    } catch(error) {
+         toast({
+            title: 'Login Failed',
+            description: 'An unexpected error occurred. Please try again.',
+            variant: 'destructive',
+          });
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

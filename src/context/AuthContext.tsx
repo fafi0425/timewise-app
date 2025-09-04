@@ -35,8 +35,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (userDocSnap.exists()) {
           setUser({ uid: userDocSnap.id, ...userDocSnap.data() } as User);
         } else {
-          // Handle case where user exists in Auth but not Firestore
+          // This can happen if the user is deleted from Firestore but not Auth.
           setUser(null);
+          await signOutUser();
         }
       } else {
          setUser(null);
@@ -51,37 +52,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (loading) return;
 
     if (!user && pathname !== '/login' && pathname !== '/register') {
+      // If not logged in and not on a public page, redirect to login
       router.push('/login');
     } else if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
+      // If logged in and on a public page, redirect to the correct dashboard
       if (pathname === '/login' || pathname === '/register') {
-        router.push(user.role === 'Administrator' ? '/admin' : '/dashboard');
+        if (user.role === 'Administrator') {
+          router.push('/admin');
+        } else {
+          router.push('/dashboard');
+        }
       }
     }
   }, [user, loading, pathname, router]);
 
   const login = async (email: string, pass: string): Promise<User | null> => {
     setLoading(true);
-    const authenticatedUser = await authenticateUser(email, pass);
-    if (authenticatedUser) {
-      // onAuthStateChanged will handle setting the user state
-      setLoading(false);
-      return authenticatedUser;
+    try {
+        const authenticatedUser = await authenticateUser(email, pass);
+        // onAuthStateChanged will handle setting the user state and the useEffect will handle routing
+        return authenticatedUser;
+    } catch(error) {
+        console.error("Login process failed:", error);
+        return null;
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
-    return null;
   };
 
   const logout = async () => {
     if(user && user.role !== 'Administrator'){
-       endWorkSession(user);
+       await endWorkSession(user);
     }
     try {
         await signOutUser();
     } catch (error) {
         console.error("Error during sign out:", error);
     } finally {
-        localStorage.removeItem('currentUser');
         setUser(null);
         router.push('/login');
     }
