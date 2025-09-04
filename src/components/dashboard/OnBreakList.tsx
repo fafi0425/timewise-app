@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coffee, Utensils } from 'lucide-react';
 import type { User, UserState } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, onSnapshot, getDocs, where } from 'firebase/firestore';
 
 interface OnBreakUser extends User {
     type: 'break' | 'lunch';
@@ -18,25 +18,25 @@ export default function OnBreakList() {
   useEffect(() => {
     // This query now specifically asks for users on break or lunch.
     // The security rules must allow this specific query.
-    const statesQuery = query(
-        collection(db, "userStates"), 
-        where("currentState", "in", ["break", "lunch"])
-    );
+    const statesQuery = query(collection(db, "userStates"));
     
     const unsubscribe = onSnapshot(statesQuery, async (querySnapshot) => {
-        const usersOnBreak: OnBreakUser[] = [];
+        const userStates: {id: string, data: UserState}[] = [];
+        querySnapshot.forEach(doc => {
+            userStates.push({ id: doc.id, data: doc.data() as UserState });
+        });
+
+        const usersOnBreakOrLunchStates = userStates.filter(
+            (s) => s.data.currentState === 'break' || s.data.currentState === 'lunch'
+        );
+
+        if (usersOnBreakOrLunchStates.length === 0) {
+            setOnBreakUsers([]);
+            return;
+        }
+
+        const userIds = usersOnBreakOrLunchStates.map(doc => doc.id);
         
-        if (querySnapshot.empty) {
-            setOnBreakUsers([]);
-            return;
-        }
-
-        const userIds = querySnapshot.docs.map(doc => doc.id);
-        if (userIds.length === 0) {
-            setOnBreakUsers([]);
-            return;
-        }
-
         const usersQuery = query(collection(db, "users"), where("uid", "in", userIds));
         const usersSnapshot = await getDocs(usersQuery);
         const usersData = usersSnapshot.docs.reduce((acc, doc) => {
@@ -44,19 +44,20 @@ export default function OnBreakList() {
             return acc;
         }, {} as Record<string, User>);
 
-        querySnapshot.forEach(doc => {
-            const state = doc.data() as UserState;
-            const user = usersData[doc.id];
-            
-            if (user) {
-                if (state.currentState === 'break' && state.breakStartTime) {
-                    usersOnBreak.push({ ...user, type: 'break', startTime: state.breakStartTime });
-                } else if (state.currentState === 'lunch' && state.lunchStartTime) {
-                     usersOnBreak.push({ ...user, type: 'lunch', startTime: state.lunchStartTime });
-                }
+        const finalUsersList = usersOnBreakOrLunchStates.map(stateDoc => {
+            const user = usersData[stateDoc.id];
+            if (!user) return null;
+
+            if (stateDoc.data.currentState === 'break' && stateDoc.data.breakStartTime) {
+                return { ...user, type: 'break', startTime: stateDoc.data.breakStartTime };
+            } else if (stateDoc.data.currentState === 'lunch' && stateDoc.data.lunchStartTime) {
+                return { ...user, type: 'lunch', startTime: stateDoc.data.lunchStartTime };
             }
-        });
-        setOnBreakUsers(usersOnBreak);
+            return null;
+        }).filter(Boolean) as OnBreakUser[];
+        
+        setOnBreakUsers(finalUsersList);
+
     }, (error) => {
         console.error("Error with onBreak snapshot listener:", error);
     });

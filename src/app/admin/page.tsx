@@ -87,8 +87,8 @@ export default function AdminPage() {
         const activityData = activitySnapshot.docs.map(d => ({id: d.id, ...d.data()} as ActivityLog));
         
         const overbreakData = activityData.filter(log => 
-            (log.action === 'Break In' && (log.duration || 0) > 15) ||
-            (log.action === 'Lunch In' && (log.duration || 0) > 60)
+            (log.action === 'Break In' && log.duration && log.duration > 15) ||
+            (log.action === 'Lunch In' && log.duration && log.duration > 60)
         );
         setOverbreaks(overbreakData.map(o => ({...o, id: `overbreak_${Math.random()}`})));
         setIsLoadingOverbreaks(false);
@@ -470,7 +470,7 @@ export default function AdminPage() {
                                 <div key={o.id} className="flex items-center justify-between p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
                                     <div>
                                         <div className="font-medium text-red-700">{o.employeeName}</div>
-                                        <div className="text-sm text-red-600">{o.action.replace('In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
+                                        <div className="text-sm text-red-600">{o.action.replace(' In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
                                         <div className="text-xs text-gray-500">{o.date} at {o.time}</div>
                                     </div>
                                     <div className="text-red-500 text-xl">⚠️</div>
