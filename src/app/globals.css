@@ -55,11 +55,14 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body antialiased;
-    background-color: hsl(var(--background));
+    @apply text-foreground font-body antialiased;
+    background: linear-gradient(135deg, #0F4C75 0%, #3282B8 50%, #2E8B57 100%);
     background-attachment: fixed;
   }
   .card-shadow {
     box-shadow: 0 20px 40px rgba(15, 76, 117, 0.15);
+  }
+  .input-focus:focus {
+      box-shadow: 0 0 0 3px rgba(50, 130, 184, 0.3);
   }
 }

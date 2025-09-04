@@ -19,7 +19,7 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-pantone-blue-3 to-pantone-green-3">
+    <div className="flex flex-col min-h-screen">
        <div className="relative z-10 flex flex-col flex-1">
           <header className="px-4 lg:px-6 h-14 flex items-center bg-white/30 backdrop-blur-md border-b border-black/10 sticky top-0 z-50">
             <Link href="/" className="flex items-center justify-center" prefetch={false}>
@@ -36,7 +36,7 @@ export default function LandingPage() {
             </nav>
           </header>
           <main className="flex-1">
-            <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 text-card-foreground">
+            <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 text-white">
               <div className="container px-4 md:px-6">
                 <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
                   <div className="flex flex-col justify-center space-y-4">
@@ -44,7 +44,7 @@ export default function LandingPage() {
                       <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
                         Effortless Time Tracking for Your Entire Team
                       </h1>
-                      <p className="max-w-[600px] text-card-foreground/80 md:text-xl">
+                      <p className="max-w-[600px] text-white/80 md:text-xl">
                         TimeWise provides a simple, yet powerful solution for monitoring employee work, break, and lunch
                         times. Boost productivity and ensure compliance with ease.
                       </p>
@@ -67,13 +67,13 @@ export default function LandingPage() {
               </div>
             </section>
 
-            <section className="w-full py-12 md:py-24 lg:py-32 text-card-foreground">
+            <section className="w-full py-12 md:py-24 lg:py-32 text-white">
               <div className="container px-4 md:px-6">
                 <div className="flex flex-col items-center justify-center space-y-4 text-center">
                   <div className="space-y-2">
-                    <div className="inline-block rounded-lg bg-black/5 px-3 py-1 text-sm">Key Features</div>
+                    <div className="inline-block rounded-lg bg-black/5 px-3 py-1 text-sm text-white">Key Features</div>
                     <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need to Succeed</h2>
-                    <p className="max-w-[900px] text-card-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                    <p className="max-w-[900px] text-white/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                       Our platform is packed with features designed to streamline your workflow and boost your team's productivity.
                     </p>
                   </div>
@@ -89,7 +89,7 @@ export default function LandingPage() {
                     title="Shift Management"
                     description="Easily assign and view employees based on their shifts to manage your workforce effectively."
                   />
-                  <FeatureCard 
+                   <FeatureCard 
                     icon={<CalendarCheck className="h-6 w-6 text-primary-foreground" />}
                     title="Automated Timesheets"
                     description="Generate accurate timesheets automatically, calculating regular hours, overtime, and lateness."
@@ -99,8 +99,8 @@ export default function LandingPage() {
             </section>
 
           </main>
-          <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-black/10 text-card-foreground">
-            <p className="text-xs text-card-foreground/80">&copy; {new Date().getFullYear()} TimeWise. All rights reserved.</p>
+          <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-black/10 text-white">
+            <p className="text-xs text-white/80">&copy; {new Date().getFullYear()} TimeWise. All rights reserved.</p>
             <nav className="sm:ml-auto flex gap-4 sm:gap-6">
               <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
                 Terms of Service
