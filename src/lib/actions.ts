@@ -1,7 +1,5 @@
 
 'use server';
-// This is the critical line that was missing. It loads the environment variables.
-require('dotenv').config(); 
 
 import * as admin from 'firebase-admin';
 import type { User, ActivityLog } from './types';

@@ -10,15 +10,19 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import * as admin from 'firebase-admin';
 
-// Re-use the admin app initialization from actions.ts
+// Initialize the service account credentials from environment variables
+const serviceAccount = {
+  projectId: process.env.PROJECT_ID,
+  clientEmail: process.env.CLIENT_EMAIL,
+  // The private key needs to have its escaped newlines replaced with actual newlines.
+  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+};
+
+// Initialize the Firebase Admin app if it's not already initialized.
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.PROJECT_ID,
-        clientEmail: process.env.CLIENT_EMAIL,
-        privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
+      credential: admin.credential.cert(serviceAccount),
     });
     console.log("Firebase Admin SDK initialized successfully for cleanup flow.");
   } catch (error: any) {
