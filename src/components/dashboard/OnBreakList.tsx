@@ -26,6 +26,11 @@ export default function OnBreakList() {
         }
 
         const userIds = querySnapshot.docs.map(doc => doc.id);
+        if (userIds.length === 0) {
+            setOnBreakUsers([]);
+            return;
+        }
+
         const usersQuery = query(collection(db, "users"), where("uid", "in", userIds));
         const usersSnapshot = await getDocs(usersQuery);
         const usersData = usersSnapshot.docs.reduce((acc, doc) => {
@@ -46,6 +51,8 @@ export default function OnBreakList() {
             }
         });
         setOnBreakUsers(usersOnBreak);
+    }, (error) => {
+        console.error("Error with onBreak snapshot listener:", error);
     });
 
     return () => unsubscribe();
