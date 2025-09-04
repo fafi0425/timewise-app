@@ -8,9 +8,9 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="px-4 lg:px-6 h-14 flex items-center bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
-        <Link href="#" className="flex items-center justify-center" prefetch={false}>
+        <Link href="/" className="flex items-center justify-center" prefetch={false}>
           <Clock className="h-6 w-6 text-white" />
-          <span className="sr-only">TimeWise</span>
+          <span className="ml-2 text-lg font-semibold text-white font-headline">TimeWise</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Button asChild variant="ghost" className="text-sm font-medium text-white hover:underline underline-offset-4">
