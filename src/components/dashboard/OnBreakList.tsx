@@ -18,7 +18,7 @@ export default function OnBreakList() {
   useEffect(() => {
     // This query now specifically asks for users on break or lunch.
     // The security rules must allow this specific query.
-    const statesQuery = query(collection(db, "userStates"));
+    const statesQuery = query(collection(db, "userStates"), where("currentState", "in", ["break", "lunch"]));
     
     const unsubscribe = onSnapshot(statesQuery, async (querySnapshot) => {
         const userStates: {id: string, data: UserState}[] = [];
@@ -37,6 +37,12 @@ export default function OnBreakList() {
 
         const userIds = usersOnBreakOrLunchStates.map(doc => doc.id);
         
+        // Ensure userIds is not empty before querying, as "in" queries with empty arrays are invalid.
+        if (userIds.length === 0) {
+            setOnBreakUsers([]);
+            return;
+        }
+
         const usersQuery = query(collection(db, "users"), where("uid", "in", userIds));
         const usersSnapshot = await getDocs(usersQuery);
         const usersData = usersSnapshot.docs.reduce((acc, doc) => {

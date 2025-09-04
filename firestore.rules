@@ -2,44 +2,39 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if a user is an administrator
+  
+    // Helper function to check for Admin role
     function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
     }
 
-    // Users can read their own data, and any authenticated user can list/get user info
-    // for rosters and user profiles. Admins can read/write all user data.
+    // USERS: Allow read access for all authenticated users, and write access only for the user themselves or an admin.
     match /users/{userId} {
-      allow read, list: if request.auth != null;
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || isAdmin();
-      allow delete: if isAdmin();
+      allow read, write: if request.auth.uid == userId || isAdmin();
+      allow list: if request.auth != null || isAdmin(); // Allow any authenticated user to list users for rosters
     }
-    
-    // User states can be listed by any authenticated user for break/status lists.
-    // Users can only write to their own state document. Admins have full access.
+
+    // USER STATES: Allow users to manage their own state. Allow any authenticated user to read for team status components.
     match /userStates/{userId} {
-      allow read, list: if request.auth != null;
       allow write: if request.auth.uid == userId || isAdmin();
+      // Allow reading a single document if you are the owner or an admin
+      allow get: if request.auth.uid == userId || isAdmin();
+      // Allow listing documents if authenticated (for team status components)
+      allow list: if request.auth != null || isAdmin();
     }
     
-    // Users can create their own activity logs.
-    // They can only read/list logs that belong to them.
-    // Admins have full read access to all logs.
+    // ACTIVITY & TIMESHEET: More restrictive. Users can only query their own logs. Admins can read all.
     match /activity/{docId} {
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow read, list: if (request.auth != null && resource.data.uid == request.auth.uid) || isAdmin();
-      allow delete: if isAdmin();
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow read, write: if resource.data.uid == request.auth.uid || isAdmin();
+      // Allow list only when the query is filtered by the user's own UID.
+      allow list: if (request.query.resource.data.uid == request.auth.uid || isAdmin());
     }
-    
-    // Users can create their own timesheet entries.
-    // They can only read/list timesheet entries that belong to them.
-    // Admins have full read access to all entries.
+
     match /timesheet/{docId} {
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow read, list: if (request.auth != null && resource.data.uid == request.auth.uid) || isAdmin();
+       allow create: if request.auth.uid == request.resource.data.uid;
+       allow read, write: if resource.data.uid == request.auth.uid || isAdmin();
+       allow list: if (request.query.resource.data.uid == request.auth.uid || isAdmin());
     }
   }
 }
