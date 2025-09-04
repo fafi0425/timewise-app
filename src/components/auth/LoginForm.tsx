@@ -43,8 +43,9 @@ export default function LoginForm() {
             title: 'Login Successful',
             description: `Welcome back, ${user.name}!`,
           });
-          // The redirection is now handled by the AuthContext,
-          // so we don't need to push routes here.
+          // The redirection is now handled entirely by the AuthContext,
+          // so we don't need to push routes here. It will listen for the
+          // user state change and redirect accordingly.
         }
     } catch(error: any) {
          toast({
