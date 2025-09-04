@@ -11,63 +11,92 @@ import { getDocs, collection, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { TimesheetEntry, ProcessedDay } from '@/lib/types';
 import { processTimesheet } from '@/ai/flows/timesheet-flow';
-import { SHIFTS } from '@/components/admin/ShiftManager';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+
+const MONTHS = [
+    { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
+    { value: 3, name: 'April' }, { value: 4, name: 'May' }, { value: 5, name: 'June' },
+    { value: 6, name: 'July' }, { value: 7, name: 'August' }, { value: 8, name: 'September' },
+    { value: 9, name: 'October' }, { value: 10, name: 'November' }, { value: 11, name: 'December' }
+];
+
+const getYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i >= currentYear - 5; i--) {
+        years.push(i);
+    }
+    return years;
+};
 
 export default function TimesheetPage() {
     const { user } = useAuth();
     const [processedData, setProcessedData] = useState<ProcessedDay[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    const YEARS = getYears();
 
-    useEffect(() => {
+    const fetchAndProcessTimesheet = async () => {
         if (!user) return;
 
-        const fetchAndProcessTimesheet = async () => {
-            setIsLoading(true);
-            try {
-                // 1. Fetch raw timesheet data
-                const timesheetRef = collection(db, 'timesheet');
-                const q = query(
-                    timesheetRef,
-                    where('uid', '==', user.uid),
-                    orderBy('timestamp', 'asc')
-                );
-                const querySnapshot = await getDocs(q);
-                const rawEntries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimesheetEntry));
+        setIsLoading(true);
+        try {
+            // 1. Fetch raw timesheet data for the selected month and year
+            const startDate = new Date(selectedYear, selectedMonth, 1);
+            const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+            
+            const startTimestamp = startDate.getTime();
+            const endTimestamp = endDate.getTime();
 
-                if (rawEntries.length === 0) {
-                    setProcessedData([]);
-                    setIsLoading(false);
-                    return;
-                }
-                
-                // 2. Process data with the AI flow
-                const shift = user.shift || 'none';
-                let shiftDetails = {};
-                if (shift === 'custom') {
-                    // This assumes custom shift times are stored somewhere accessible.
-                    // For this example, we'll use defaults if not found.
-                    const customStartTime = localStorage.getItem('customShiftStart') || '09:00';
-                    const customEndTime = localStorage.getItem('customShiftEnd') || '17:00';
-                    shiftDetails = { shiftStart: customStartTime, shiftEnd: customEndTime };
-                }
+            const timesheetRef = collection(db, 'timesheet');
+            const q = query(
+                timesheetRef,
+                where('uid', '==', user.uid),
+                where('timestamp', '>=', startTimestamp),
+                where('timestamp', '<=', endTimestamp),
+                orderBy('timestamp', 'asc')
+            );
+            const querySnapshot = await getDocs(q);
+            const rawEntries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimesheetEntry));
 
-                const result = await processTimesheet({
-                    timesheetEntries: rawEntries,
-                    shift: shift,
-                    ...shiftDetails,
-                });
-
-                setProcessedData(result.processedDays.reverse()); // Show most recent first
-
-            } catch (error) {
-                console.error("Error fetching or processing timesheet:", error);
-                // Handle error appropriately in UI
-            } finally {
+            if (rawEntries.length === 0) {
+                setProcessedData([]);
                 setIsLoading(false);
+                return;
             }
-        };
+            
+            // 2. Process data with the AI flow
+            const shift = user.shift || 'none';
+            let shiftDetails = {};
+            if (shift === 'custom') {
+                const customStartTime = localStorage.getItem('customShiftStart') || '09:00';
+                const customEndTime = localStorage.getItem('customShiftEnd') || '17:00';
+                shiftDetails = { shiftStart: customStartTime, shiftEnd: customEndTime };
+            }
 
-        fetchAndProcessTimesheet();
+            const result = await processTimesheet({
+                timesheetEntries: rawEntries,
+                shift: shift,
+                ...shiftDetails,
+            });
+
+            setProcessedData(result.processedDays.reverse()); // Show most recent first
+
+        } catch (error) {
+            console.error("Error fetching or processing timesheet:", error);
+            // Handle error appropriately in UI
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchAndProcessTimesheet();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     return (
@@ -81,7 +110,28 @@ export default function TimesheetPage() {
                 
                 <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
                     <CardHeader>
-                        <CardTitle>Daily Breakdown</CardTitle>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <CardTitle>Daily Breakdown</CardTitle>
+                            <div className="flex gap-4 items-center">
+                                <Select value={String(selectedMonth)} onValueChange={(val) => setSelectedMonth(Number(val))}>
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder="Select Month" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                                     <SelectTrigger className="w-[120px]">
+                                        <SelectValue placeholder="Select Year" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Button onClick={fetchAndProcessTimesheet}>View</Button>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
@@ -120,7 +170,7 @@ export default function TimesheetPage() {
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={8} className="text-center h-24">
-                                                No timesheet entries found.
+                                                No timesheet entries found for {MONTHS.find(m => m.value === selectedMonth)?.name} {selectedYear}.
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -132,4 +182,3 @@ export default function TimesheetPage() {
             </main>
         </AuthCheck>
     );
-}
