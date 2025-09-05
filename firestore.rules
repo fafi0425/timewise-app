@@ -1,32 +1,32 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
-    }
-
     match /users/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
-    }
-
-    match /activity/{docId} {
-      allow read, write: if request.auth != null && (request.auth.uid == resource.data.uid || isAdmin());
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null; // Admins or users can create their own profile
     }
 
     match /userStates/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    match /timesheet/{docId} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.uid || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+    match /activity/{activityId} {
+      allow read, write: if request.auth != null; // More specific rules can be added here
     }
-    
-    match /overbreaks/{docId} {
-        allow create: if request.auth != null;
+
+    match /timesheet/{timesheetId} {
+      allow read, write: if request.auth != null;
     }
+
+    match /overbreaks/{overbreakId} {
+      // Allow authenticated users to read all overbreak alerts
+      allow read: if request.auth != null;
+      // Allow a user to create their own overbreak log
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+
   }
 }

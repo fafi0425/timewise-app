@@ -74,7 +74,7 @@ export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
-    const [overbreaks, setOverbreaks] = useState<any[]>([]);
+    const [overbreaks, setOverbreaks] = useState<ActivityLog[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     
     const [newUserName, setNewUserName] = useState('');
@@ -130,19 +130,7 @@ export default function AdminPage() {
 
                 const today = new Date().toLocaleDateString();
                 const todayActivities = activities.filter(a => a.date === today);
-
-                const todaysOverbreaks = activities.filter(log => {
-                    if (!log.duration) return false;
-                    const isBreak = log.action === 'Break In';
-                    const isLunch = log.action === 'Lunch In';
-                    if (!isBreak && !isLunch) return false;
-                    
-                    const limit = isBreak ? 15 : 60;
-                    return log.duration > limit;
-                });
                 
-                setOverbreaks(todaysOverbreaks.sort((a,b) => b.timestamp - a.timestamp));
-
                 setStats({
                     totalEmployees: usersResult.users?.length || 0,
                     totalActivities: activities.length,
@@ -166,6 +154,28 @@ export default function AdminPage() {
     useEffect(() => {
         refreshData();
     }, [refreshData]);
+
+     useEffect(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTimestamp = today.getTime();
+
+        const q = query(
+            collection(db, "overbreaks"), 
+            where("timestamp", ">=", todayTimestamp)
+        );
+        
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const todaysOverbreaks: ActivityLog[] = [];
+            querySnapshot.forEach((doc) => {
+                const log = { id: doc.id, ...doc.data() } as ActivityLog;
+                todaysOverbreaks.push(log);
+            });
+            setOverbreaks(todaysOverbreaks.sort((a,b) => b.timestamp - a.timestamp));
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
