@@ -17,28 +17,7 @@ import {
   setDoc,
   getDoc
 } from 'firebase/firestore';
-
-const ACTIVITY_LOG_LIMIT = 100;
-
-export const getActivityLog = async (uid?: string): Promise<ActivityLog[]> => {
-    if (typeof window === 'undefined') return [];
-    
-    const activityRef = collection(db, 'activity');
-    let q;
-    if (uid) {
-        q = query(activityRef, where('uid', '==', uid), orderBy('timestamp', 'desc'), limit(ACTIVITY_LOG_LIMIT));
-    } else {
-        q = query(activityRef, orderBy('timestamp', 'desc'), limit(ACTIVITY_LOG_LIMIT));
-    }
-    
-    const querySnapshot = await getDocs(q);
-    const logs: ActivityLog[] = [];
-    querySnapshot.forEach(doc => {
-        const data = doc.data();
-        logs.push({ id: doc.id, ...data } as ActivityLog);
-    });
-    return logs;
-}
+import { getAllActivityAction } from '@/lib/firebase-admin';
 
 const logTimesheetEvent = async (user: User, action: TimesheetAction) => {
     const newEntry: Omit<TimesheetEntry, 'id'> = {
@@ -85,6 +64,14 @@ export default function useTimeTracker() {
     isDanger: false,
   });
 
+  const fetchUserActivity = useCallback(async (uid: string) => {
+    const result = await getAllActivityAction();
+    if (result.success && result.activities) {
+        const userLogs = result.activities.filter(log => log.uid === uid && log.date === new Date().toLocaleDateString());
+        setActivityLog(userLogs);
+    }
+  }, []);
+
   const logActivity = useCallback(async (action: ActivityLog['action'], duration: number | null = null) => {
     if (!user) return;
 
@@ -99,19 +86,16 @@ export default function useTimeTracker() {
     };
     
     await addDoc(collection(db, 'activity'), newLog);
-    
-    const userTodayLogs = await getActivityLog(user.uid);
-    setActivityLog(userTodayLogs.filter(log => log.date === new Date().toLocaleDateString()));
+    await fetchUserActivity(user.uid);
 
-  }, [user]);
+
+  }, [user, fetchUserActivity]);
 
   useEffect(() => {
     if (!user) return;
     
     const fetchInitialData = async () => {
-        const userTodayLogs = await getActivityLog(user.uid);
-        const todayLogs = userTodayLogs.filter(log => log.date === new Date().toLocaleDateString())
-        setActivityLog(todayLogs);
+        await fetchUserActivity(user.uid);
 
         const stateDocRef = doc(db, 'userStates', user.uid);
         const stateDocSnap = await getDoc(stateDocRef);
@@ -122,7 +106,6 @@ export default function useTimeTracker() {
             initialState = stateDocSnap.data() as UserState;
         }
 
-        // Determine initial clocked-in state from today's timesheet logs
         const timesheetRef = collection(db, 'timesheet');
         const q = query(
             timesheetRef, 
@@ -146,7 +129,7 @@ export default function useTimeTracker() {
     
     fetchInitialData();
 
-  }, [user]);
+  }, [user, fetchUserActivity]);
   
   useEffect(() => {
     if(user) {
@@ -164,7 +147,6 @@ export default function useTimeTracker() {
 
   const clockOut = useCallback(() => {
     if (!user) return;
-    // Cannot clock out if on break or lunch
     if (status.currentState === 'break' || status.currentState === 'lunch') {
         toast({ title: "Action Required", description: "Please end your break/lunch before clocking out.", variant: "destructive" });
         return;

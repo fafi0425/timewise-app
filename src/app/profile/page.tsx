@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { List, Mail, Building, Briefcase, Clock, User as UserIcon, Camera, LoaderCircle } from 'lucide-react';
-import { getActivityLog } from '@/hooks/useTimeTracker';
 import type { ActivityLog } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { storage } from '@/lib/firebase';
@@ -16,6 +15,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateUserProfilePicture } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { getAllActivityAction } from '@/lib/firebase-admin';
 
 const InfoRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | undefined }) => (
     <div className="flex items-center text-sm">
@@ -35,8 +35,11 @@ export default function ProfilePage() {
     useEffect(() => {
         if (user) {
             const fetchLogs = async () => {
-                const userLogs = await getActivityLog(user.uid);
-                setRecentActivity(userLogs.slice(0, 10));
+                const result = await getAllActivityAction();
+                if (result.success && result.activities) {
+                    const userLogs = result.activities.filter(log => log.uid === user.uid);
+                    setRecentActivity(userLogs.slice(0, 10));
+                }
             }
             fetchLogs();
         }

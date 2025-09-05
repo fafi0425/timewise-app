@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Dialog,
@@ -7,7 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { getActivityLog } from '@/hooks/useTimeTracker';
+import { getAllActivityAction } from '@/lib/firebase-admin';
 import type { ActivityLog } from '@/lib/types';
 import { BarChart, Clock, Coffee, Utensils } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -23,7 +24,13 @@ export default function StatisticsModal({ isOpen, onClose }: StatisticsModalProp
 
   useEffect(() => {
     if (user && isOpen) {
-      getActivityLog(user.uid).then(setUserActivities);
+      const fetchActivities = async () => {
+        const result = await getAllActivityAction();
+        if (result.success && result.activities) {
+          setUserActivities(result.activities.filter(a => a.uid === user.uid));
+        }
+      };
+      fetchActivities();
     }
   }, [user, isOpen]);
 
