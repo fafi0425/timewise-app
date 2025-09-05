@@ -306,7 +306,7 @@ export default function AdminPage() {
 
     const handleExportPdf = () => {
         if (filterLogs()) {
-            const doc = new jsPDF();
+            const doc = new jsPDF({ orientation: 'landscape' });
             const tableColumn = ["Employee", "Date", "Time", "Type", "Duration (min)"];
             const tableRows: (string|number|null)[][] = [];
 
@@ -337,7 +337,7 @@ export default function AdminPage() {
             return;
         }
 
-        const doc = new jsPDF();
+        const doc = new jsPDF({ orientation: 'landscape' });
         const tableColumn = ["Employee", "Date", "Time", "Type", "Exceeded By (min)"];
         const tableRows: (string|number|null)[][] = [];
 
@@ -860,5 +860,8 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
+
+    
+
 
     
