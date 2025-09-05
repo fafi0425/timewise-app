@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { ActivityLog } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { onSnapshot, collection, query, where } from 'firebase/firestore';
+import { onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -23,7 +23,8 @@ export default function TeamOverbreakAlerts() {
 
     const q = query(
         collection(db, "overbreaks"), 
-        where("timestamp", ">=", todayTimestamp)
+        where("timestamp", ">=", todayTimestamp),
+        orderBy("timestamp", "desc")
     );
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -32,7 +33,9 @@ export default function TeamOverbreakAlerts() {
             const log = { id: doc.id, ...doc.data() } as ActivityLog;
             todaysOverbreaks.push(log);
         });
-        setOverbreaks(todaysOverbreaks.sort((a,b) => b.timestamp - a.timestamp));
+        setOverbreaks(todaysOverbreaks);
+    }, (error) => {
+        console.error("Error in TeamOverbreakAlerts snapshot listener:", error);
     });
 
     return () => unsubscribe();
@@ -80,3 +83,4 @@ export default function TeamOverbreakAlerts() {
     </Card>
   );
 }
+
