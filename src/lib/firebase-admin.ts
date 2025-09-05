@@ -1,4 +1,3 @@
-
 'use server';
 import 'server-only';
 import admin from 'firebase-admin';
@@ -114,6 +113,41 @@ export async function getAllTimesheetAction(): Promise<{ success: boolean, messa
       };
     }
   }
+
+export async function getTimesheetForUserByMonth(uid: string, year: number, month: number): Promise<{ success: boolean, message: string, timesheet?: TimesheetEntry[] }> {
+    try {
+        const db = getDb();
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+        const startTimestamp = startDate.getTime();
+        const endTimestamp = endDate.getTime();
+
+        const timesheetRef = db.collection('timesheet');
+        const q = timesheetRef
+            .where('uid', '==', uid)
+            .where('timestamp', '>=', startTimestamp)
+            .where('timestamp', '<=', endTimestamp)
+            .orderBy('timestamp', 'asc');
+
+        const querySnapshot = await q.get();
+        if (querySnapshot.empty) {
+            return { success: true, message: 'No entries found for this period.', timesheet: [] };
+        }
+
+        const entries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimesheetEntry));
+        return { success: true, message: 'Entries retrieved.', timesheet: entries };
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error("Error fetching timesheet with Admin SDK:", errorMessage);
+        return {
+            success: false,
+            message: `Failed to retrieve timesheet entries: ${errorMessage}`,
+            timesheet: [],
+        };
+    }
+}
 
 // New function to get all users from Firestore
 export async function getAllUsersFromFirestore(): Promise<{ success: boolean, users: User[] }> {

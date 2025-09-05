@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,12 +6,12 @@ import AuthCheck from '@/components/shared/AuthCheck';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoaderCircle } from 'lucide-react';
-import { getDocs, collection, query, where, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import type { TimesheetEntry, ProcessedDay } from '@/lib/types';
 import { processTimesheet } from '@/ai/flows/timesheet-flow';
+import { getTimesheetForUserByMonth } from '@/lib/firebase-admin';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -32,6 +31,7 @@ const getYears = () => {
 
 export default function TimesheetPage() {
     const { user } = useAuth();
+    const { toast } = useToast();
     const [processedData, setProcessedData] = useState<ProcessedDay[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -43,23 +43,17 @@ export default function TimesheetPage() {
 
         setIsLoading(true);
         try {
-            // 1. Fetch raw timesheet data for the selected month and year
-            const startDate = new Date(selectedYear, selectedMonth, 1);
-            const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
-            
-            const startTimestamp = startDate.getTime();
-            const endTimestamp = endDate.getTime();
+            // 1. Fetch raw timesheet data using the server action
+            const result = await getTimesheetForUserByMonth(user.uid, selectedYear, selectedMonth);
 
-            const timesheetRef = collection(db, 'timesheet');
-            const q = query(
-                timesheetRef,
-                where('uid', '==', user.uid),
-                where('timestamp', '>=', startTimestamp),
-                where('timestamp', '<=', endTimestamp),
-                orderBy('timestamp', 'asc')
-            );
-            const querySnapshot = await getDocs(q);
-            const rawEntries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimesheetEntry));
+            if (!result.success || !result.timesheet) {
+                toast({ title: "Error", description: result.message, variant: 'destructive' });
+                setProcessedData([]);
+                setIsLoading(false);
+                return;
+            }
+            
+            const rawEntries = result.timesheet;
 
             if (rawEntries.length === 0) {
                 setProcessedData([]);
@@ -76,17 +70,18 @@ export default function TimesheetPage() {
                 shiftDetails = { shiftStart: customStartTime, shiftEnd: customEndTime };
             }
 
-            const result = await processTimesheet({
+            const aiResult = await processTimesheet({
                 timesheetEntries: rawEntries,
                 shift: shift,
                 ...shiftDetails,
             });
 
-            setProcessedData(result.processedDays.reverse()); // Show most recent first
+            setProcessedData(aiResult.processedDays.reverse()); // Show most recent first
 
         } catch (error) {
             console.error("Error fetching or processing timesheet:", error);
-            // Handle error appropriately in UI
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            toast({ title: "Error", description: `Failed to process timesheet: ${errorMessage}`, variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
@@ -129,7 +124,9 @@ export default function TimesheetPage() {
                                         {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
-                                <Button onClick={fetchAndProcessTimesheet}>View</Button>
+                                <Button onClick={fetchAndProcessTimesheet} disabled={isLoading}>
+                                    {isLoading ? <LoaderCircle className="animate-spin" /> : 'View'}
+                                </Button>
                             </div>
                         </div>
                     </CardHeader>
@@ -182,3 +179,4 @@ export default function TimesheetPage() {
             </main>
         </AuthCheck>
     );
+}

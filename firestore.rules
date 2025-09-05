@@ -14,16 +14,11 @@ service cloud.firestore {
       allow read, create: if request.auth != null;
     }
 
-    // Rules for the timesheet collection
+    // Rules for the timesheet collection - only allow creation from the client.
+    // Reading/querying should be done via secure server actions.
     match /timesheet/{timesheetId} {
-      // Allow authenticated users to create new timesheet entries (clock in/out)
       allow create: if request.auth != null;
-      
-      // Allow users to read their own individual timesheet entries
-      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
-      
-      // Allow users to QUERY the timesheet collection ONLY if they are filtering by their own uid.
-      allow list: if request.auth != null && request.query.resource.data.uid == request.auth.uid;
+      allow read, list: if false; // Disallow client-side reads
     }
     
     // Allow users to read and write to their own state document
