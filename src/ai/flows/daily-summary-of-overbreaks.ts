@@ -49,7 +49,14 @@ const dailySummaryOfOverbreaksFlow = ai.defineFlow(
     outputSchema: DailySummaryOfOverbreaksOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+      return output!;
+    } catch (error) {
+       console.error(`[DailySummaryFlow] Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+       return {
+         summary: "The AI summary is temporarily unavailable as the service is currently overloaded. Please try again in a few moments."
+       };
+    }
   }
 );
