@@ -83,8 +83,9 @@ export default function DashboardPage() {
                 isActive={status.currentState === 'lunch'}
               />
             </div>
-            <div>
-                 <TeamOverbreakAlerts />
+            <div className="space-y-8">
+                <TeamOverbreakAlerts />
+                <OnShiftList simpleStatus={true} />
             </div>
           </div>
           
@@ -95,10 +96,6 @@ export default function DashboardPage() {
           </div>
         </div>
         
-        <div className="mt-8">
-            <OnShiftList simpleStatus={true} />
-        </div>
-
          <StatisticsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} />
       </main>
     </AuthCheck>
