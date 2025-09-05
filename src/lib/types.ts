@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 export interface User {
@@ -64,7 +63,7 @@ export const ProcessedDaySchema = z.object({
     late: z.string(),
     undertime: z.string(),
     regularHours: z.string(),
-    otHours: zstring(),
+    otHours: z.string(),
     totalHours: z.string(),
 });
 export type ProcessedDay = z.infer<typeof ProcessedDaySchema>;
@@ -74,5 +73,3 @@ export const ProcessTimesheetOutputSchema = z.object({
   processedDays: z.array(ProcessedDaySchema).describe('An array of processed daily timesheet data.'),
 });
 export type ProcessTimesheetOutput = z.infer<typeof ProcessTimesheetOutputSchema>;
-
-    
