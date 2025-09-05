@@ -180,17 +180,7 @@ export default function useTimeTracker() {
         duration = Math.round((new Date().getTime() - startTime.getTime()) / 60000);
     }
     
-    const logData: Omit<ActivityLog, 'id'> = {
-      uid: user.uid,
-      employeeName: user.name,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      action: actionText,
-      duration,
-      timestamp: Date.now()
-    };
-    
-    await addDoc(collection(db, 'activity'), logData);
+    const logData = await logActivity(actionText, duration);
 
     const BREAK_TIME_LIMIT_MINS = 15;
     const LUNCH_TIME_LIMIT_MINS = 60;
@@ -218,7 +208,7 @@ export default function useTimeTracker() {
           totalLunchMinutes: prev.totalLunchMinutes + duration
       }));
     }
-  }, [status, user, toast]);
+  }, [status, user, toast, logActivity]);
 
 
   useEffect(() => {
