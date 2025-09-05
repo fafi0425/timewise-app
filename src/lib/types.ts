@@ -5,7 +5,7 @@ export interface User {
   uid: string;
   name: string;
   email: string;
-  department: 'Dealing' | 'CS/KYC' | 'Admin' | string;
+  department: 'Dealing' | 'CS/KYC' | 'Admin' | 'Team Leader' | string;
   role: 'Manager' | 'Team Leader' | 'HR' | 'Employee' | 'Administrator';
   password?: string;
   shift?: Shift;
@@ -64,7 +64,7 @@ export const ProcessedDaySchema = z.object({
     late: z.string(),
     undertime: z.string(),
     regularHours: z.string(),
-    otHours: z.string(),
+    otHours: zstring(),
     totalHours: z.string(),
 });
 export type ProcessedDay = z.infer<typeof ProcessedDaySchema>;
@@ -74,3 +74,5 @@ export const ProcessTimesheetOutputSchema = z.object({
   processedDays: z.array(ProcessedDaySchema).describe('An array of processed daily timesheet data.'),
 });
 export type ProcessTimesheetOutput = z.infer<typeof ProcessTimesheetOutputSchema>;
+
+    

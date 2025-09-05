@@ -445,6 +445,7 @@ export default function AdminPage() {
                                     <SelectItem value="Dealing">Dealing</SelectItem>
                                     <SelectItem value="CS/KYC">CS/KYC</SelectItem>
                                     <SelectItem value="Admin">Admin</SelectItem>
+                                    <SelectItem value="Team Leader">Team Leader</SelectItem>
                                 </SelectContent>
                             </Select>
                              <Select value={newUserRole} onValueChange={setNewUserRole}>
@@ -628,6 +629,7 @@ export default function AdminPage() {
                                 <SelectItem value="Dealing">Dealing</SelectItem>
                                 <SelectItem value="CS/KYC">CS/KYC</SelectItem>
                                 <SelectItem value="Admin">Admin</SelectItem>
+                                <SelectItem value="Team Leader">Team Leader</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -708,3 +710,6 @@ export default function AdminPage() {
 
 
 
+
+
+    
