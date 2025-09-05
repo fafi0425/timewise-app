@@ -1,40 +1,37 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
-    }
-
-    function isOwner(uid) {
-      return request.auth.uid == uid;
-    }
-
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if isOwner(userId) || isAdmin();
+      // Admins can read/write all user profiles.
+      // Users can read their own profile.
+      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == userId;
+      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+      allow create: if request.auth.uid != null;
+    }
+
+    match /activity/{activityId} {
+        // Admins can read all activity.
+        // Authenticated users can read all activity (for on-break list).
+        allow read: if request.auth != null;
+        // Users can only create activity for themselves.
+        allow create: if request.auth.uid == request.resource.data.uid;
+    }
+    
+    match /timesheet/{timesheetId} {
+        // Admins can read all timesheet entries.
+        // Users can only read their own timesheet entries.
+        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == resource.data.uid;
+        // Users can only create timesheet entries for themselves.
+        allow create: if request.auth.uid == request.resource.data.uid;
     }
 
     match /userStates/{userId} {
-      allow read: if request.auth != null;
-      allow write: if isOwner(userId) || isAdmin();
-    }
-
-    match /activity/{docId} {
-      allow read, get: if isOwner(request.resource.data.uid) || isAdmin();
-      allow list: if request.query.uid == request.auth.uid || isAdmin();
-      allow create: if request.auth != null;
-      allow update, delete: if isAdmin();
-    }
-
-    match /timesheet/{docId} {
-      allow read, get: if isOwner(request.resource.data.uid) || isAdmin();
-      allow list: if request.query.uid == request.auth.uid || isAdmin();
-      allow create: if request.auth != null;
-      allow update, delete: if isAdmin();
+        // Admins can read all user states.
+        // Authenticated users can read all states (for on-break/on-shift lists).
+        allow read: if request.auth != null;
+        // Users can only update their own state.
+        allow write: if request.auth.uid == userId;
     }
   }
 }
