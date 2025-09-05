@@ -34,6 +34,8 @@ import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { processTimesheet } from '@/ai/flows/timesheet-flow';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -135,12 +137,6 @@ export default function AdminPage() {
                     todayBreaks: todayActivities.filter(a => a.action === 'Break Out').length,
                     todayLunches: todayActivities.filter(a => a.action === 'Lunch Out').length,
                 });
-                
-                const overbreakData = activities.filter(log => 
-                    (log.action === 'Break In' && log.duration && log.duration > 15) ||
-                    (log.action === 'Lunch In' && log.duration && log.duration > 60)
-                );
-                setOverbreaks(overbreakData);
 
             } else {
                 toast({ title: "Error Fetching Activity", description: activityResult.message, variant: "destructive" });
@@ -158,6 +154,27 @@ export default function AdminPage() {
     useEffect(() => {
         refreshData();
     }, [refreshData]);
+
+    useEffect(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTimestamp = today.getTime();
+
+        const q = query(
+            collection(db, "overbreaks"), 
+            where("timestamp", ">=", todayTimestamp)
+        );
+        
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const newOverbreaks: ActivityLog[] = [];
+            querySnapshot.forEach((doc) => {
+                newOverbreaks.push({ id: doc.id, ...doc.data() } as ActivityLog);
+            });
+            setOverbreaks(newOverbreaks.sort((a,b) => b.timestamp - a.timestamp));
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
