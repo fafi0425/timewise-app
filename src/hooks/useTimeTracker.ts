@@ -180,7 +180,6 @@ export default function useTimeTracker() {
         duration = Math.round((new Date().getTime() - startTime.getTime()) / 60000);
     }
     
-    // Create the log data object first
     const logData: Omit<ActivityLog, 'id'> = {
       uid: user.uid,
       employeeName: user.name,
@@ -191,34 +190,33 @@ export default function useTimeTracker() {
       timestamp: Date.now()
     };
     
-    // Log the main activity
     await addDoc(collection(db, 'activity'), logData);
 
     const BREAK_TIME_LIMIT_MINS = 15;
     const LUNCH_TIME_LIMIT_MINS = 60;
 
     if (type === 'break') {
+      if (duration > BREAK_TIME_LIMIT_MINS) {
+        toast({ title: "Warning", description: `Break exceeded by ${duration - BREAK_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
+        await logOverbreak(logData);
+      }
       setStatus(prev => ({
           ...prev,
           currentState: 'working',
           breakStartTime: null,
           totalBreakMinutes: prev.totalBreakMinutes + duration
       }));
-      if (duration > BREAK_TIME_LIMIT_MINS) {
-        toast({ title: "Warning", description: `Break exceeded by ${duration - BREAK_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
+    } else { // Lunch
+       if (duration > LUNCH_TIME_LIMIT_MINS) {
+        toast({ title: "Warning", description: `Lunch exceeded by ${duration - LUNCH_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
         await logOverbreak(logData);
       }
-    } else { // Lunch
       setStatus(prev => ({
           ...prev,
           currentState: 'working',
           lunchStartTime: null,
           totalLunchMinutes: prev.totalLunchMinutes + duration
       }));
-       if (duration > LUNCH_TIME_LIMIT_MINS) {
-        toast({ title: "Warning", description: `Lunch exceeded by ${duration - LUNCH_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
-        await logOverbreak(logData);
-      }
     }
   }, [status, user, toast]);
 
