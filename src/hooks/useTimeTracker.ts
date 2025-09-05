@@ -160,24 +160,44 @@ export default function useTimeTracker() {
   }, [logActivity]);
 
   const endAction = useCallback(async (type: 'break' | 'lunch') => {
+    if (!user) return;
+
     let duration = 0;
     let startTime = null;
+    let actionText: 'Break In' | 'Lunch In';
 
     if (type === 'break' && status.breakStartTime) {
         startTime = new Date(status.breakStartTime);
+        actionText = 'Break In';
     } else if (type === 'lunch' && status.lunchStartTime) {
         startTime = new Date(status.lunchStartTime);
+        actionText = 'Lunch In';
+    } else {
+        return; // No start time found, can't end action
     }
 
     if(startTime) {
         duration = Math.round((new Date().getTime() - startTime.getTime()) / 60000);
     }
+    
+    // Create the log data object first
+    const logData: Omit<ActivityLog, 'id'> = {
+      uid: user.uid,
+      employeeName: user.name,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      action: actionText,
+      duration,
+      timestamp: Date.now()
+    };
+    
+    // Log the main activity
+    await addDoc(collection(db, 'activity'), logData);
 
     const BREAK_TIME_LIMIT_MINS = 15;
     const LUNCH_TIME_LIMIT_MINS = 60;
 
     if (type === 'break') {
-      const logData = await logActivity('Break In', duration);
       setStatus(prev => ({
           ...prev,
           currentState: 'working',
@@ -186,10 +206,9 @@ export default function useTimeTracker() {
       }));
       if (duration > BREAK_TIME_LIMIT_MINS) {
         toast({ title: "Warning", description: `Break exceeded by ${duration - BREAK_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
-        if (logData) await logOverbreak(logData);
+        await logOverbreak(logData);
       }
-    } else {
-      const logData = await logActivity('Lunch In', duration);
+    } else { // Lunch
       setStatus(prev => ({
           ...prev,
           currentState: 'working',
@@ -198,10 +217,10 @@ export default function useTimeTracker() {
       }));
        if (duration > LUNCH_TIME_LIMIT_MINS) {
         toast({ title: "Warning", description: `Lunch exceeded by ${duration - LUNCH_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
-        if (logData) await logOverbreak(logData);
+        await logOverbreak(logData);
       }
     }
-  }, [logActivity, status, toast]);
+  }, [status, user, toast]);
 
 
   useEffect(() => {
