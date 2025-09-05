@@ -8,7 +8,7 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, Query } from 'firebase/firestore';
 
 
 interface OnShiftUser extends User {
@@ -19,6 +19,17 @@ interface OnShiftListProps {
     simpleStatus?: boolean;
 }
 
+const getOverlappingShift = (hour: number): Shift | null => {
+    // Morning (5-14) & Mid (13-22) -> Overlap 13:00-13:59
+    if (hour === 13) return 'mid';
+    // Mid (13-22) & Night (21-6) -> Overlap 21:00-21:59
+    if (hour === 21) return 'night';
+    // Night (21-6) & Morning (5-14) -> Overlap 5:00-5:59
+    if (hour === 5) return 'morning';
+    return null;
+}
+
+
 export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) {
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [activeShiftFilter, setActiveShiftFilter] = useState<Shift>('morning');
@@ -27,34 +38,40 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
     useEffect(() => {
         const updateList = async () => {
             const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
-
+            
             const now = new Date();
             const currentHour = now.getHours();
             
             let actualCurrentShift: Shift = 'morning';
-            if (shiftFilter === 'custom') {
-                actualCurrentShift = 'custom';
-            } else {
-                const nightShiftEnd = SHIFTS.night.end!;
-                const nightShiftStart = SHIFTS.night.start!;
-                if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
-                     actualCurrentShift = 'night';
-                } else if (currentHour >= SHIFTS.morning.start! && currentHour < SHIFTS.morning.end!) {
-                    actualCurrentShift = 'morning';
-                } else if (currentHour >= SHIFTS.mid.start! && currentHour < SHIFTS.mid.end!) {
-                    actualCurrentShift = 'mid';
-                }
+            const nightShiftEnd = SHIFTS.night.end!;
+            const nightShiftStart = SHIFTS.night.start!;
+            if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
+                 actualCurrentShift = 'night';
+            } else if (currentHour >= SHIFTS.morning.start! && currentHour < SHIFTS.morning.end!) {
+                actualCurrentShift = 'morning';
+            } else if (currentHour >= SHIFTS.mid.start! && currentHour < SHIFTS.mid.end!) {
+                actualCurrentShift = 'mid';
             }
             
             const shiftToDisplay = shiftFilter || actualCurrentShift;
             setActiveShiftFilter(shiftToDisplay);
-            setTitle(`${SHIFTS[shiftToDisplay]?.name || 'Custom Shift'} Roster`);
 
-            let usersInShiftQuery;
-            if (shiftToDisplay === 'custom') {
+            const overlappingShift = getOverlappingShift(currentHour);
+            const shiftsToQuery: Shift[] = [shiftToDisplay];
+            
+            let rosterTitle = `${SHIFTS[shiftToDisplay]?.name || 'Custom Shift'} Roster`;
+            if (overlappingShift && !shiftFilter) { // Only show overlap if no specific shift is manually selected
+                shiftsToQuery.push(overlappingShift);
+                const overlapTitle = SHIFTS[overlappingShift]?.name;
+                rosterTitle += ` & ${overlapTitle} Overlap`;
+            }
+            setTitle(rosterTitle);
+
+            let usersInShiftQuery: Query;
+            if (shiftsToQuery.includes('custom')) {
                  usersInShiftQuery = query(collection(db, "users"), where("role", "!=", "Administrator"));
             } else {
-                 usersInShiftQuery = query(collection(db, "users"), where("shift", "==", shiftToDisplay), where("role", "!=", "Administrator"));
+                 usersInShiftQuery = query(collection(db, "users"), where("shift", "in", shiftsToQuery), where("role", "!=", "Administrator"));
             }
             
             const usersSnapshot = await getDocs(usersInShiftQuery);
@@ -95,7 +112,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
 
         const unsubscribePromise = updateList();
 
-        const interval = setInterval(updateList, 60000); // Poll for shift changes every 60s
+        const interval = setInterval(updateList, 60000);
         window.addEventListener('storage', updateList);
         
         return () => {
@@ -111,6 +128,15 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         if (action === 'Logged Out') return 'destructive';
         return 'outline';
     };
+
+    const getShiftBadgeVariant = (shift: Shift | undefined) => {
+        switch(shift) {
+            case 'morning': return 'bg-yellow-200 text-yellow-800';
+            case 'mid': return 'bg-blue-200 text-blue-800';
+            case 'night': return 'bg-indigo-200 text-indigo-800';
+            default: return 'bg-gray-200 text-gray-800';
+        }
+    }
 
     return (
         <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -132,7 +158,14 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                                 <div key={u.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                                     <div>
                                         <div className="font-medium text-card-foreground">{u.name}</div>
-                                        <div className="text-sm text-muted-foreground">{u.department}</div>
+                                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                            <span>{u.department}</span>
+                                            {u.shift && u.shift !== 'none' && (
+                                                <Badge className={`font-normal ${getShiftBadgeVariant(u.shift)}`}>
+                                                    {SHIFTS[u.shift]?.name || 'Custom'}
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                      <Badge variant={getActionBadgeVariant(u.status)}>{u.status}</Badge>
                                 </div>
