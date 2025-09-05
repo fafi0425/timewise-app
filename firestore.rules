@@ -2,36 +2,53 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      // Admins can read/write all user profiles.
-      // Users can read their own profile.
-      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == userId;
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
-      allow create: if request.auth.uid != null;
+  
+    // Helper function to check if the user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
     }
 
+    // Helper function to check if the user is an Administrator
+    function isAdministrator() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Admins can read/write any user document.
+      // Users can only read/write their own document.
+      allow read, write: if isAdministrator() || request.auth.uid == userId;
+    }
+
+    // Rules for the 'activity' collection
     match /activity/{activityId} {
-        // Admins can read all activity.
-        // Authenticated users can read all activity (for on-break list).
-        allow read: if request.auth != null;
-        // Users can only create activity for themselves.
-        allow create: if request.auth.uid == request.resource.data.uid;
+        // Any signed-in user can create an activity log for themselves.
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.uid;
+        // Only admins can read all activity logs.
+        // Users cannot read other users' logs directly to protect privacy.
+        allow read: if isAdministrator();
+        // Nobody can update or delete logs to maintain data integrity.
+        allow update, delete: if false;
     }
     
-    match /timesheet/{timesheetId} {
-        // Admins can read all timesheet entries.
-        // Users can only read their own timesheet entries.
-        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == resource.data.uid;
-        // Users can only create timesheet entries for themselves.
-        allow create: if request.auth.uid == request.resource.data.uid;
-    }
-
+    // Rules for the 'userStates' collection
     match /userStates/{userId} {
-        // Admins can read all user states.
-        // Authenticated users can read all states (for on-break/on-shift lists).
-        allow read: if request.auth != null;
-        // Users can only update their own state.
-        allow write: if request.auth.uid == userId;
+        // Any authenticated user can read any user's state (for on-break lists etc.)
+        allow read: if isSignedIn();
+        // Users can only write to their own state document.
+        allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Rules for the 'timesheet' collection
+    match /timesheet/{entryId} {
+      // Allow users to create their own timesheet entries.
+      allow create: if request.auth.uid == request.resource.data.uid;
+      
+      // Allow users to read/list their own timesheet entries, which is needed for the monthly query.
+      allow read: if isAdministrator() || (isSignedIn() && request.auth.uid == resource.data.uid) || (isSignedIn() && request.query.where.path == "uid" && request.query.where.op == "==" && request.query.where.value == request.auth.uid);
+      
+      // Do not allow updating or deleting timesheet entries.
+      allow update, delete: if false;
     }
   }
 }
