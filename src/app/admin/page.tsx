@@ -138,7 +138,7 @@ export default function AdminPage() {
                     if (!isBreak && !isLunch) return false;
                     
                     const limit = isBreak ? 15 : 60;
-                    return log.duration > limit && log.date === today;
+                    return log.duration > limit;
                 });
                 
                 setOverbreaks(todaysOverbreaks.sort((a,b) => b.timestamp - a.timestamp));
@@ -874,3 +874,6 @@ export default function AdminPage() {
 
     
 
+
+
+    
