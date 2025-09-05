@@ -491,177 +491,50 @@ export default function AdminPage() {
             </Card>
 
             <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
-                <div className="flex justify-between items-center mb-6">
-                 <CardTitle className="text-xl font-semibold text-card-foreground font-headline">User Management</CardTitle>
-                 <Button variant="secondary" onClick={handleCleanupUsers} disabled={isCleaning}>
-                     {isCleaning ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                     Cleanup Users
-                 </Button>
-                </div>
-                 <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
-                    <div>
-                        <h4 className="font-medium text-card-foreground mb-4">Add New User</h4>
-                        <form onSubmit={handleAddUser} className="space-y-4">
-                            <Input value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Full Name" required />
-                            <Input value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} type="email" placeholder="Email" required />
-                            <Select value={newUserDepartment} onValueChange={setNewUserDepartment}>
-                                <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Dealing">Dealing</SelectItem>
-                                    <SelectItem value="CS/KYC">CS/KYC</SelectItem>
-                                    <SelectItem value="Admin">Admin</SelectItem>
-                                    <SelectItem value="Team Leader">Team Leader</SelectItem>
-                                </SelectContent>
-                            </Select>
-                             <Select value={newUserRole} onValueChange={setNewUserRole}>
-                                <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Manager">Manager</SelectItem>
-                                    <SelectItem value="Team Leader">Team Leader</SelectItem>
-                                    <SelectItem value="HR">HR</SelectItem>
-                                    <SelectItem value="Employee">Employee</SelectItem>
-                                    <SelectItem value="Administrator">Administrator</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select value={newUserShift} onValueChange={(val) => setNewUserShift(val as Shift)}>
-                                <SelectTrigger><SelectValue placeholder="Select Shift" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">No Shift</SelectItem>
-                                    {Object.entries(SHIFTS).map(([key, {name}]) => (
-                                        <SelectItem key={key} value={key}>{name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Input value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} type="password" placeholder="Password" required />
-                            <Button type="submit" className="w-full" variant="secondary"><UserPlus className="mr-2 h-4 w-4"/>Add User</Button>
-                        </form>
-                    </div>
-                     <div>
-                        <h4 className="font-medium text-card-foreground mb-4">Registered Users</h4>
-                        <ScrollArea className="h-72 pr-4">
-                        {isLoadingUsers ? (
-                            <div className="flex justify-center items-center h-full">
-                                <LoaderCircle className="animate-spin text-primary" />
+                <CardHeader className="!p-0 !pb-6">
+                    <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
+                        <Clock className="mr-2 h-5 w-5 text-primary" /> Employee Timesheet Viewer
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="!p-0">
+                    <div className="flex flex-col gap-4 md:flex-row">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 gap-4 flex-grow">
+                            <div>
+                                <Label>Employee</Label>
+                                <Select value={selectedTimesheetUser} onValueChange={setSelectedTimesheetUser}>
+                                    <SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger>
+                                    <SelectContent>
+                                        {users.filter(u => u.role !== 'Administrator').map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        ) : (
-                        <div className="space-y-2">
-                           {users.map(user => (
-                               <div key={user.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                                   <div className="flex items-center gap-3">
-                                       <Avatar>
-                                            <AvatarImage src={user.photoURL} alt={user.name} />
-                                            <AvatarFallback>
-                                                {user.name.split(' ').map(n => n[0]).join('')}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                       <div>
-                                           <div className="font-medium text-card-foreground">{user.name}</div>
-                                           <div className="text-sm text-muted-foreground">{user.email}</div>
-                                            <div className="text-xs text-muted-foreground mt-1 space-x-1">
-                                                <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
-                                                <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
-                                                {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none'>]?.name}</span>}
-                                            </div>
-                                       </div>
-                                   </div>
-                                    <div className="flex items-center gap-1">
-                                     <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10" disabled={user.role === 'Administrator'}>
-                                        <Clock className="h-4 w-4" />
-                                     </Button>
-                                     <Button variant="outline" size="icon" onClick={() => openEditUserModal(user)} className="text-primary hover:bg-primary/10">
-                                        <Edit2 className="h-4 w-4" />
-                                     </Button>
-                                     <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10" disabled={user.role === 'Administrator'}>
-                                         <Trash2 className="h-4 w-4" />
-                                     </Button>
-                                    </div>
-                               </div>
-                           ))}
+                            <div>
+                                <Label>Month</Label>
+                                <Select value={String(selectedMonth)} onValueChange={(val) => setSelectedMonth(Number(val))}>
+                                    <SelectTrigger><SelectValue placeholder="Select Month" /></SelectTrigger>
+                                    <SelectContent>
+                                        {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label>Year</Label>
+                                 <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                                    <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
+                                    <SelectContent>
+                                        {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        )}
-                        </ScrollArea>
-                    </div>
-                 </div>
-            </Card>
-
-            <div className="grid lg:grid-cols-3 gap-6 mb-8">
-                <div className="lg:col-span-1">
-                    <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                        <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
-                            <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
-                                <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
-                            </CardTitle>
-                            <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
-                                <FileDown className="mr-2 h-4 w-4" /> Download PDF
+                        <div className="md:self-end">
+                            <Button onClick={handleFetchTimesheet} disabled={isTimesheetLoading} className="w-full">
+                                {isTimesheetLoading ? <LoaderCircle className="animate-spin" /> : 'View Timesheet'}
                             </Button>
-                        </CardHeader>
-                        <ScrollArea className="h-80 pr-4">
-                            <div className="space-y-3">
-                                {overbreaks.length === 0 ? <p className="text-green-600">No overbreaks detected.</p> :
-                                overbreaks.map(o => (
-                                    <div key={o.id} className="flex items-center justify-between p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
-                                        <div>
-                                            <div className="font-medium text-red-700">{o.employeeName}</div>
-                                            <div className="text-sm text-red-600">{o.action.replace(' In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
-                                            <div className="text-xs text-gray-500">{o.date} at {o.time}</div>
-                                        </div>
-                                        <div className="text-red-500 text-xl">⚠️</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </Card>
-                </div>
-                 <div className="lg:col-span-1">
-                    <DailySummaryCard activityLogs={allActivity} />
-                 </div>
-                 <div className="lg:col-span-1">
-                    <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 h-full">
-                        <CardHeader className="!p-0 !pb-6">
-                            <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
-                                <Clock className="mr-2 h-5 w-5 text-primary" /> Employee Timesheet Viewer
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="!p-0">
-                            <div className="flex flex-col gap-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Employee</Label>
-                                        <Select value={selectedTimesheetUser} onValueChange={setSelectedTimesheetUser}>
-                                            <SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger>
-                                            <SelectContent>
-                                                {users.filter(u => u.role !== 'Administrator').map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label>Month</Label>
-                                        <Select value={String(selectedMonth)} onValueChange={(val) => setSelectedMonth(Number(val))}>
-                                            <SelectTrigger><SelectValue placeholder="Select Month" /></SelectTrigger>
-                                            <SelectContent>
-                                                {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label>Year</Label>
-                                         <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
-                                            <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
-                                            <SelectContent>
-                                                {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <Button onClick={handleFetchTimesheet} disabled={isTimesheetLoading}>
-                                    {isTimesheetLoading ? <LoaderCircle className="animate-spin" /> : 'View Timesheet'}
-                                </Button>
-                            </div>
-                            
-                        </CardContent>
-                    </Card>
-                 </div>
-            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
              {processedData.length > 0 && (
                 <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
@@ -710,21 +583,148 @@ export default function AdminPage() {
              )}
 
 
-            <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
-                 <ScrollArea className="h-80 pr-4">
-                    <div className="space-y-3">
-                        {allActivity.slice(0, 20).map((a, index) => (
-                           <div key={`${a.id}-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                               <div>
-                                   <p className="font-medium text-card-foreground">{a.employeeName} <span className="text-sm text-muted-foreground">{a.action}</span></p>
-                                    <p className="text-xs text-muted-foreground">{a.date} {a.time}</p>
-                               </div>
-                           </div>
-                        ))}
+            <div className="grid lg:grid-cols-2 gap-6 mb-8">
+                 <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
+                    <div className="flex justify-between items-center mb-6">
+                     <CardTitle className="text-xl font-semibold text-card-foreground font-headline">User Management</CardTitle>
+                     <Button variant="secondary" onClick={handleCleanupUsers} disabled={isCleaning}>
+                         {isCleaning ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                         Cleanup Users
+                     </Button>
                     </div>
-                </ScrollArea>
-            </Card>
+                     <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
+                        <div>
+                            <h4 className="font-medium text-card-foreground mb-4">Add New User</h4>
+                            <form onSubmit={handleAddUser} className="space-y-4">
+                                <Input value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Full Name" required />
+                                <Input value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} type="email" placeholder="Email" required />
+                                <Select value={newUserDepartment} onValueChange={setNewUserDepartment}>
+                                    <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Dealing">Dealing</SelectItem>
+                                        <SelectItem value="CS/KYC">CS/KYC</SelectItem>
+                                        <SelectItem value="Admin">Admin</SelectItem>
+                                        <SelectItem value="Team Leader">Team Leader</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                 <Select value={newUserRole} onValueChange={setNewUserRole}>
+                                    <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Manager">Manager</SelectItem>
+                                        <SelectItem value="Team Leader">Team Leader</SelectItem>
+                                        <SelectItem value="HR">HR</SelectItem>
+                                        <SelectItem value="Employee">Employee</SelectItem>
+                                        <SelectItem value="Administrator">Administrator</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={newUserShift} onValueChange={(val) => setNewUserShift(val as Shift)}>
+                                    <SelectTrigger><SelectValue placeholder="Select Shift" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">No Shift</SelectItem>
+                                        {Object.entries(SHIFTS).map(([key, {name}]) => (
+                                            <SelectItem key={key} value={key}>{name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Input value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} type="password" placeholder="Password" required />
+                                <Button type="submit" className="w-full" variant="secondary"><UserPlus className="mr-2 h-4 w-4"/>Add User</Button>
+                            </form>
+                        </div>
+                         <div>
+                            <h4 className="font-medium text-card-foreground mb-4">Registered Users</h4>
+                            <ScrollArea className="h-72 pr-4">
+                            {isLoadingUsers ? (
+                                <div className="flex justify-center items-center h-full">
+                                    <LoaderCircle className="animate-spin text-primary" />
+                                </div>
+                            ) : (
+                            <div className="space-y-2">
+                               {users.map(user => (
+                                   <div key={user.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                                       <div className="flex items-center gap-3">
+                                           <Avatar>
+                                                <AvatarImage src={user.photoURL} alt={user.name} />
+                                                <AvatarFallback>
+                                                    {user.name.split(' ').map(n => n[0]).join('')}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                           <div>
+                                               <div className="font-medium text-card-foreground">{user.name}</div>
+                                               <div className="text-sm text-muted-foreground">{user.email}</div>
+                                                <div className="text-xs text-muted-foreground mt-1 space-x-1">
+                                                    <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
+                                                    <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
+                                                    {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none'>]?.name}</span>}
+                                                </div>
+                                           </div>
+                                       </div>
+                                        <div className="flex items-center gap-1">
+                                         <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10" disabled={user.role === 'Administrator'}>
+                                            <Clock className="h-4 w-4" />
+                                         </Button>
+                                         <Button variant="outline" size="icon" onClick={() => openEditUserModal(user)} className="text-primary hover:bg-primary/10">
+                                            <Edit2 className="h-4 w-4" />
+                                         </Button>
+                                         <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10" disabled={user.role === 'Administrator'}>
+                                             <Trash2 className="h-4 w-4" />
+                                         </Button>
+                                        </div>
+                                   </div>
+                               ))}
+                            </div>
+                            )}
+                            </ScrollArea>
+                        </div>
+                     </div>
+                </Card>
+
+                <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
+                    <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
+                        <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
+                            <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
+                        </CardTitle>
+                        <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
+                            <FileDown className="mr-2 h-4 w-4" /> Download PDF
+                        </Button>
+                    </CardHeader>
+                    <ScrollArea className="h-80 pr-4">
+                        <div className="space-y-3">
+                            {overbreaks.length === 0 ? <p className="text-green-600">No overbreaks detected.</p> :
+                            overbreaks.map(o => (
+                                <div key={o.id} className="flex items-center justify-between p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                                    <div>
+                                        <div className="font-medium text-red-700">{o.employeeName}</div>
+                                        <div className="text-sm text-red-600">{o.action.replace(' In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
+                                        <div className="text-xs text-gray-500">{o.date} at {o.time}</div>
+                                    </div>
+                                    <div className="text-red-500 text-xl">⚠️</div>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </Card>
+            </div>
+            
+            <div className="grid lg:grid-cols-2 gap-6 mb-8">
+                 <DailySummaryCard activityLogs={allActivity} />
+                 <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
+                    <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
+                     <ScrollArea className="h-80 pr-4">
+                        <div className="space-y-3">
+                            {allActivity.slice(0, 20).map((a, index) => (
+                               <div key={`${a.id}-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                                   <div>
+                                       <p className="font-medium text-card-foreground">{a.employeeName} <span className="text-sm text-muted-foreground">{a.action}</span></p>
+                                        <p className="text-xs text-muted-foreground">{a.date} {a.time}</p>
+                                   </div>
+                               </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </Card>
+            </div>
+
+
             
             <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
               <DialogContent>
