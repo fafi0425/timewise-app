@@ -1,7 +1,7 @@
 'use server';
 import 'server-only';
 import admin from 'firebase-admin';
-import type { User, ActivityLog, Shift, TimesheetEntry } from './types';
+import type { User, ActivityLog, Shift, TimesheetEntry, UserState } from './types';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { z } from 'zod';
@@ -188,5 +188,48 @@ export async function updateUserShiftInFirestore(userId: string, shift: Shift): 
     } catch (error) {
         console.error(`Error updating shift for user ${userId} in Firestore:`, error);
         throw error;
+    }
+}
+
+
+export async function getUsersOnBreakOrLunch() {
+    try {
+        const db = getDb();
+        const statesQuery = db.collection("userStates").where('currentState', 'in', ['break', 'lunch']);
+        const statesSnapshot = await statesQuery.get();
+
+        if (statesSnapshot.empty) {
+            return { success: true, users: [] };
+        }
+
+        const userIds = statesSnapshot.docs.map(doc => doc.id);
+        if (userIds.length === 0) {
+            return { success: true, users: [] };
+        }
+
+        const usersQuery = db.collection("users").where(admin.firestore.FieldPath.documentId(), "in", userIds);
+        const usersSnapshot = await usersQuery.get();
+        const usersData = usersSnapshot.docs.reduce((acc, doc) => {
+            acc[doc.id] = doc.data() as User;
+            return acc;
+        }, {} as Record<string, User>);
+
+        const combinedData = statesSnapshot.docs.map(stateDoc => {
+            const user = usersData[stateDoc.id];
+            const state = stateDoc.data() as UserState;
+            if (!user) return null;
+
+            return {
+                ...user,
+                type: state.currentState as 'break' | 'lunch',
+                startTime: state.currentState === 'break' ? state.breakStartTime : state.lunchStartTime,
+            };
+        }).filter(Boolean);
+
+        return { success: true, users: combinedData };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error("Error fetching users on break/lunch:", errorMessage);
+        return { success: false, message: `Failed to retrieve users: ${errorMessage}`, users: [] };
     }
 }
