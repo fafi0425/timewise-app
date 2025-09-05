@@ -1,38 +1,50 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read/write their own document
+    // Default deny all unless explicitly allowed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // A user can read their own document
+      allow read: if request.auth.uid == userId;
+      // A user can update their own document, but not change their role
+      allow update: if request.auth.uid == userId && request.resource.data.role == resource.data.role;
+       // Any authenticated user can create a user document (for sign-up)
       allow create: if request.auth != null;
     }
 
-    // Users can only read/write their own state document
+    // Rules for the 'userStates' sub-collection
     match /userStates/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+        // A user can read and write to their own state document
+        allow read, write: if request.auth.uid == userId;
     }
     
-    // Users can only create their own activity logs, but cannot read others'
-    // Admins can read all activity logs.
+    // Rules for the 'activity' collection
     match /activity/{docId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow read: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == resource.data.uid);
+      // Users can only create activity logs for themselves
+      allow create: if request.auth.uid == request.resource.data.uid;
+      // No user can read other users' activity logs from the client
+      allow read: if false; 
     }
     
-    // Authenticated users can read overbreak alerts.
-    // Users can only create their own overbreak entries.
-    match /overbreaks/{docId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-    }
-
-    // Users can only create their own timesheet entries
-    // Admins can read all entries.
+    // Rules for the 'timesheet' collection
     match /timesheet/{docId} {
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-        allow read: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == resource.data.uid);
+       // Users can only create timesheet entries for themselves
+       allow create: if request.auth.uid == request.resource.data.uid;
+       // No user can read other users' timesheet entries from the client
+       allow read: if false;
+    }
+    
+    // Rules for the 'overbreaks' collection
+    match /overbreaks/{docId} {
+        // Any authenticated user can see all overbreak alerts
+        allow list, get: if request.auth != null;
+        // Users can only create overbreak logs for themselves
+        allow create: if request.auth.uid == request.resource.data.uid;
     }
   }
 }
