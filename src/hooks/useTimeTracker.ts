@@ -91,30 +91,34 @@ export default function useTimeTracker() {
         const stateDocRef = doc(db, 'userStates', user.uid);
         const stateDocSnap = await getDoc(stateDocRef);
         
-        let initialState = status;
-
         if (stateDocSnap.exists()) {
-            initialState = stateDocSnap.data() as UserState;
-        }
+            const initialState = stateDocSnap.data() as UserState;
+             // Check against the latest timesheet entry to ensure consistency
+            const timesheetRef = collection(db, 'timesheet');
+            const q = query(
+                timesheetRef, 
+                where('uid', '==', user.uid), 
+                where('date', '==', new Date().toLocaleDateString()),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+            );
+            const timesheetSnapshot = await getDocs(q);
+            const latestTimesheetEntry = timesheetSnapshot.docs[0]?.data() as TimesheetEntry | undefined;
 
-        const timesheetRef = collection(db, 'timesheet');
-        const q = query(
-            timesheetRef, 
-            where('uid', '==', user.uid), 
-            where('date', '==', new Date().toLocaleDateString())
-        );
-        const timesheetSnapshot = await getDocs(q);
-        
-        const sortedEntries = timesheetSnapshot.docs
-            .map(doc => doc.data() as TimesheetEntry)
-            .sort((a, b) => b.timestamp - a.timestamp);
-
-        const latestTimesheetEntry = sortedEntries[0];
-        
-        if (latestTimesheetEntry && latestTimesheetEntry.action === 'Clock In') {
-             setStatus(prev => ({...prev, ...initialState, isClockedIn: true, currentState: 'working'}));
-        } else {
-             setStatus(prev => ({...prev, ...initialState, isClockedIn: false, currentState: 'clocked_out'}));
+            if (latestTimesheetEntry?.action === 'Clock In') {
+                 setStatus({...initialState, isClockedIn: true});
+            } else {
+                 // If not clocked in, reset to default clocked-out state
+                 const clockedOutState: UserState = {
+                    currentState: 'clocked_out',
+                    isClockedIn: false,
+                    breakStartTime: null,
+                    lunchStartTime: null,
+                    totalBreakMinutes: 0,
+                    totalLunchMinutes: 0,
+                 };
+                 setStatus(clockedOutState);
+            }
         }
     };
     
@@ -142,7 +146,15 @@ export default function useTimeTracker() {
         toast({ title: "Action Required", description: "Please end your break/lunch before clocking out.", variant: "destructive" });
         return;
     }
-    setStatus(prev => ({...prev, isClockedIn: false, currentState: 'clocked_out'}));
+    const clockedOutState: UserState = {
+        currentState: 'clocked_out',
+        isClockedIn: false,
+        breakStartTime: null,
+        lunchStartTime: null,
+        totalBreakMinutes: 0,
+        totalLunchMinutes: 0,
+    };
+    setStatus(clockedOutState);
     logTimesheetEvent(user, 'Clock Out');
     toast({ title: "Clocked Out", description: "Your work session has ended." });
   }, [user, toast, status.currentState]);

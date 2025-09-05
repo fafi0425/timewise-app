@@ -17,19 +17,17 @@ export default function TeamOverbreakAlerts() {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Listen to the entire collection and filter/sort on the client
-    // This is a robust way to avoid complex query/index interaction bugs that
-    // can cause Firestore internal assertion errors.
     const q = query(collection(db, "overbreaks"), orderBy("timestamp", "desc"));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const today = new Date().toLocaleDateString();
+        const todayStr = new Date().toLocaleDateString();
         const todaysOverbreaks: ActivityLog[] = [];
         
         querySnapshot.forEach((doc) => {
             const log = { id: doc.id, ...doc.data() } as ActivityLog;
-            // Filter for today's logs on the client
-            if (log.date === today) {
+            // The date from Firestore is a string like "9/5/2025"
+            // We just need to do a string comparison.
+            if (log.date === todayStr) {
                 todaysOverbreaks.push(log);
             }
         });
