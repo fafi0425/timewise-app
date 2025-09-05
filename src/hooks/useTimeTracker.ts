@@ -15,7 +15,8 @@ import {
   limit,
   doc,
   setDoc,
-  getDoc
+  getDoc,
+  onSnapshot
 } from 'firebase/firestore';
 
 const logTimesheetEvent = async (user: User, action: TimesheetAction) => {
@@ -90,13 +91,11 @@ export default function useTimeTracker() {
   useEffect(() => {
     if (!user) return;
     
-    const fetchInitialData = async () => {
-        const stateDocRef = doc(db, 'userStates', user.uid);
-        const stateDocSnap = await getDoc(stateDocRef);
-        
+    const stateDocRef = doc(db, 'userStates', user.uid);
+    
+    const unsubscribe = onSnapshot(stateDocRef, (stateDocSnap) => {
         if (stateDocSnap.exists()) {
-            const initialState = stateDocSnap.data() as UserState;
-            setStatus(initialState);
+            setStatus(stateDocSnap.data() as UserState);
         } else {
              const defaultState: UserState = {
                 currentState: 'clocked_out',
@@ -107,11 +106,11 @@ export default function useTimeTracker() {
                 totalLunchMinutes: 0,
              };
              setStatus(defaultState);
-             await setDoc(stateDocRef, defaultState);
+             setDoc(stateDocRef, defaultState);
         }
-    };
-    
-    fetchInitialData();
+    });
+
+    return () => unsubscribe();
 
   }, [user]);
   
