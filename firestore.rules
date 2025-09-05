@@ -1,25 +1,38 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Users can only read/write their own document
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    // Users can only read/write their own state document
+    match /userStates/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Overbreaks should be readable by all authenticated users
+    // Users can only create their own activity logs, but cannot read others'
+    // Admins can read all activity logs.
+    match /activity/{docId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == resource.data.uid);
+    }
+    
+    // Authenticated users can read overbreak alerts.
+    // Users can only create their own overbreak entries.
     match /overbreaks/{docId} {
         allow read: if request.auth != null;
-        allow write: if request.auth.uid == request.resource.data.uid;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
     }
-    
-    match /activity/{activityId} {
-      allow read, write: if request.auth.uid == resource.data.uid;
-    }
-    match /userStates/{userId} {
-        allow read, write: if request.auth.uid == userId;
-    }
-    match /timesheet/{entryId} {
-      allow read, write: if request.auth.uid == resource.data.uid;
+
+    // Users can only create their own timesheet entries
+    // Admins can read all entries.
+    match /timesheet/{docId} {
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+        allow read: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator' || request.auth.uid == resource.data.uid);
     }
   }
 }
