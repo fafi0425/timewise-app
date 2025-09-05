@@ -46,14 +46,14 @@ export default function TimesheetPage() {
             // 1. Fetch raw timesheet data using the server action
             const result = await getTimesheetForUserByMonth(user.uid, selectedYear, selectedMonth);
 
-            if (!result.success || !result.timesheet) {
+            if (!result.success) {
                 toast({ title: "Error", description: result.message, variant: 'destructive' });
                 setProcessedData([]);
                 setIsLoading(false);
                 return;
             }
             
-            const rawEntries = result.timesheet;
+            const rawEntries = result.timesheet || [];
 
             if (rawEntries.length === 0) {
                 setProcessedData([]);
