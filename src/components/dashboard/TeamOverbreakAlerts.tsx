@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { ActivityLog } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
+import { onSnapshot, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -17,25 +17,25 @@ export default function TeamOverbreakAlerts() {
   const { user } = useAuth();
 
   useEffect(() => {
-    // A simpler query to avoid internal SDK errors. 
-    // We fetch the most recent overbreaks and filter for today on the client.
-    const q = query(
-        collection(db, "overbreaks"), 
-        orderBy("timestamp", "desc"),
-        limit(50) // Limit to a reasonable number for performance
-    );
+    // Listen to the entire collection and filter/sort on the client
+    // to avoid a complex query that triggers an internal SDK error.
+    const q = collection(db, "overbreaks");
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const today = new Date().toLocaleDateString();
-        const todaysOverbreaks: ActivityLog[] = [];
+        const allOverbreaks: ActivityLog[] = [];
         
         querySnapshot.forEach((doc) => {
             const log = { id: doc.id, ...doc.data() } as ActivityLog;
             if (log.date === today) {
-                todaysOverbreaks.push(log);
+                allOverbreaks.push(log);
             }
         });
-        setOverbreaks(todaysOverbreaks);
+
+        // Sort by timestamp descending to show the latest first
+        allOverbreaks.sort((a, b) => b.timestamp - a.timestamp);
+        
+        setOverbreaks(allOverbreaks);
     }, (error) => {
         console.error("Error in TeamOverbreakAlerts snapshot listener:", error);
     });
@@ -85,4 +85,3 @@ export default function TeamOverbreakAlerts() {
     </Card>
   );
 }
-
