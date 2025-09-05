@@ -6,7 +6,7 @@ import AuthCheck from '@/components/shared/AuthCheck';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoaderCircle } from 'lucide-react';
-import type { TimesheetEntry, ProcessedDay } from '@/lib/types';
+import type { ProcessedDay } from '@/lib/types';
 import { processTimesheet } from '@/ai/flows/timesheet-flow';
 import { getTimesheetForUserByMonth } from '@/lib/firebase-admin';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
