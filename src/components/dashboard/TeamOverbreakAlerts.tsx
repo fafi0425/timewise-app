@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { ActivityLog } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { onSnapshot, collection, query, orderBy } from 'firebase/firestore';
+import { onSnapshot, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -17,20 +17,18 @@ export default function TeamOverbreakAlerts() {
   const { user } = useAuth();
 
   useEffect(() => {
-    const q = query(collection(db, "overbreaks"), orderBy("timestamp", "desc"));
+    const q = collection(db, "overbreaks");
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const todayStr = new Date().toLocaleDateString();
-        const todaysOverbreaks: ActivityLog[] = [];
+        const allOverbreaks: ActivityLog[] = [];
         
         querySnapshot.forEach((doc) => {
-            const log = { id: doc.id, ...doc.data() } as ActivityLog;
-            // The date from Firestore is a string like "9/5/2025"
-            // We just need to do a string comparison.
-            if (log.date === todayStr) {
-                todaysOverbreaks.push(log);
-            }
+            allOverbreaks.push({ id: doc.id, ...doc.data() } as ActivityLog);
         });
+
+        const todaysOverbreaks = allOverbreaks.filter(log => log.date === todayStr);
+        todaysOverbreaks.sort((a, b) => b.timestamp - a.timestamp);
         
         setOverbreaks(todaysOverbreaks);
     }, (error) => {

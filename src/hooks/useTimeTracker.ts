@@ -93,32 +93,18 @@ export default function useTimeTracker() {
         
         if (stateDocSnap.exists()) {
             const initialState = stateDocSnap.data() as UserState;
-             // Check against the latest timesheet entry to ensure consistency
-            const timesheetRef = collection(db, 'timesheet');
-            const q = query(
-                timesheetRef, 
-                where('uid', '==', user.uid), 
-                where('date', '==', new Date().toLocaleDateString()),
-                orderBy('timestamp', 'desc'),
-                limit(1)
-            );
-            const timesheetSnapshot = await getDocs(q);
-            const latestTimesheetEntry = timesheetSnapshot.docs[0]?.data() as TimesheetEntry | undefined;
-
-            if (latestTimesheetEntry?.action === 'Clock In') {
-                 setStatus({...initialState, isClockedIn: true});
-            } else {
-                 // If not clocked in, reset to default clocked-out state
-                 const clockedOutState: UserState = {
-                    currentState: 'clocked_out',
-                    isClockedIn: false,
-                    breakStartTime: null,
-                    lunchStartTime: null,
-                    totalBreakMinutes: 0,
-                    totalLunchMinutes: 0,
-                 };
-                 setStatus(clockedOutState);
-            }
+            setStatus(initialState);
+        } else {
+             const defaultState: UserState = {
+                currentState: 'clocked_out',
+                isClockedIn: false,
+                breakStartTime: null,
+                lunchStartTime: null,
+                totalBreakMinutes: 0,
+                totalLunchMinutes: 0,
+             };
+             setStatus(defaultState);
+             await setDoc(stateDocRef, defaultState);
         }
     };
     
