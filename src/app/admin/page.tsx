@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth } from '@/lib/firebase-admin';
+import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction } from '@/lib/firebase-admin';
 import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
@@ -34,8 +34,6 @@ import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { processTimesheet } from '@/ai/flows/timesheet-flow';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -112,9 +110,10 @@ export default function AdminPage() {
     const refreshData = useCallback(async () => {
         setIsLoadingData(true);
         try {
-            const [usersResult, activityResult] = await Promise.all([
+            const [usersResult, activityResult, overbreaksResult] = await Promise.all([
                 getAllUsersAction(),
                 getAllActivityAction(),
+                getOverbreaksAction(),
             ]);
 
             if (usersResult.success && usersResult.users) {
@@ -143,6 +142,13 @@ export default function AdminPage() {
                 setAllActivity([]);
             }
 
+             if (overbreaksResult.success && overbreaksResult.overbreaks) {
+                setOverbreaks(overbreaksResult.overbreaks);
+            } else {
+                toast({ title: "Error Fetching Overbreaks", description: overbreaksResult.message, variant: "destructive" });
+                setOverbreaks([]);
+            }
+
         } catch (error: any) {
              toast({ title: "Error refreshing data", description: error.message, variant: "destructive" });
         } finally {
@@ -154,28 +160,6 @@ export default function AdminPage() {
     useEffect(() => {
         refreshData();
     }, [refreshData]);
-
-     useEffect(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayTimestamp = today.getTime();
-
-        const q = query(
-            collection(db, "overbreaks"), 
-            where("timestamp", ">=", todayTimestamp)
-        );
-        
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const todaysOverbreaks: ActivityLog[] = [];
-            querySnapshot.forEach((doc) => {
-                const log = { id: doc.id, ...doc.data() } as ActivityLog;
-                todaysOverbreaks.push(log);
-            });
-            setOverbreaks(todaysOverbreaks.sort((a,b) => b.timestamp - a.timestamp));
-        });
-
-        return () => unsubscribe();
-    }, []);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -878,12 +862,3 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
-
-    
-
-
-    
-
-
-
-    

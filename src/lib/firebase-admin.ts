@@ -1,3 +1,4 @@
+
 'use server';
 import 'server-only';
 import admin from 'firebase-admin';
@@ -87,6 +88,37 @@ export async function getAllActivityAction(): Promise<{ success: boolean, messag
       activities: [],
     };
   }
+}
+
+export async function getOverbreaksAction(): Promise<{ success: boolean, message: string, overbreaks?: ActivityLog[] }> {
+    try {
+        const db = getDb();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTimestamp = today.getTime();
+
+        const overbreaksCol = db.collection('overbreaks')
+            .where("timestamp", ">=", todayTimestamp)
+            .orderBy('timestamp', 'desc');
+            
+        const overbreaksSnapshot = await overbreaksCol.get();
+
+        if (overbreaksSnapshot.empty) {
+            return { success: true, message: 'No overbreaks found for today.', overbreaks: [] };
+        }
+
+        const overbreaksList = overbreaksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
+        return { success: true, message: 'Overbreaks retrieved successfully.', overbreaks: overbreaksList };
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error("Error fetching overbreaks with Admin SDK:", errorMessage);
+        return {
+            success: false,
+            message: `Failed to retrieve overbreaks: ${errorMessage}`,
+            overbreaks: [],
+        };
+    }
 }
 
 export async function getAllTimesheetAction(): Promise<{ success: boolean, message: string, timesheet?: TimesheetEntry[] }> {
