@@ -55,7 +55,6 @@ export default function useTimeTracker() {
     totalBreakMinutes: 0,
     totalLunchMinutes: 0,
   });
-  const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
   const [countdown, setCountdown] = useState({
     display: '00:00',
     progress: 100,
@@ -63,14 +62,6 @@ export default function useTimeTracker() {
     isWarning: false,
     isDanger: false,
   });
-
-  const fetchUserActivity = useCallback(async (uid: string) => {
-    const result = await getAllActivityAction();
-    if (result.success && result.activities) {
-        const userLogs = result.activities.filter(log => log.uid === uid && log.date === new Date().toLocaleDateString());
-        setActivityLog(userLogs);
-    }
-  }, []);
 
   const logActivity = useCallback(async (action: ActivityLog['action'], duration: number | null = null) => {
     if (!user) return;
@@ -86,17 +77,13 @@ export default function useTimeTracker() {
     };
     
     await addDoc(collection(db, 'activity'), newLog);
-    await fetchUserActivity(user.uid);
 
-
-  }, [user, fetchUserActivity]);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
     
     const fetchInitialData = async () => {
-        await fetchUserActivity(user.uid);
-
         const stateDocRef = doc(db, 'userStates', user.uid);
         const stateDocSnap = await getDoc(stateDocRef);
         
@@ -129,7 +116,7 @@ export default function useTimeTracker() {
     
     fetchInitialData();
 
-  }, [user, fetchUserActivity]);
+  }, [user]);
   
   useEffect(() => {
     if(user) {
@@ -270,5 +257,5 @@ export default function useTimeTracker() {
     totalWorkTime: `${Math.floor((480 - status.totalBreakMinutes - status.totalLunchMinutes) / 60)}h ${ (480 - status.totalBreakMinutes - status.totalLunchMinutes) % 60}m`
   }
 
-  return { status, logActivity, activityLog, summary, countdown, startAction, endAction, clockIn, clockOut };
+  return { status, summary, countdown, startAction, endAction, clockIn, clockOut };
 }

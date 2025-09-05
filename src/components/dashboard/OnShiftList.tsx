@@ -4,19 +4,15 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import type { User, ActivityLog, Shift } from '@/lib/types';
+import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 
 
-interface OnShiftUser {
-    uid: string;
-    name: string;
-    department: string;
-    latestAction: string;
-    latestActionTime: string;
+interface OnShiftUser extends User {
+    status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
 }
 
 interface OnShiftListProps {
@@ -56,8 +52,6 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
 
             let usersInShiftQuery;
             if (shiftToDisplay === 'custom') {
-                 // For custom shifts, logic might need to be more complex.
-                 // For now, let's assume it shows all active non-admin users.
                  usersInShiftQuery = query(collection(db, "users"), where("role", "!=", "Administrator"));
             } else {
                  usersInShiftQuery = query(collection(db, "users"), where("shift", "==", shiftToDisplay), where("role", "!=", "Administrator"));
@@ -65,54 +59,56 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             
             const usersSnapshot = await getDocs(usersInShiftQuery);
             const usersInShift = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
-            
-            const rosterUsersPromises = usersInShift.map(async (user) => {
-                 const activityQuery = query(
-                    collection(db, "activity"), 
-                    where("uid", "==", user.uid), 
-                    orderBy("timestamp", "desc"), 
-                    limit(1)
-                );
-                const activitySnapshot = await getDocs(activityQuery);
-                const latestLog = activitySnapshot.docs[0]?.data() as ActivityLog;
 
-                if (!latestLog || latestLog.action === 'Work Ended' || latestLog.date !== new Date().toLocaleDateString()) {
-                     return {
-                        uid: user.uid,
-                        name: user.name,
-                        department: user.department,
-                        latestAction: 'Logged Out',
-                        latestActionTime: latestLog?.time || '',
-                    };
-                }
-                
-                return {
-                    uid: user.uid,
-                    name: user.name,
-                    department: user.department,
-                    latestAction: latestLog.action,
-                    latestActionTime: latestLog.time,
-                };
+            if (usersInShift.length === 0) {
+                setOnShiftUsers([]);
+                return;
+            }
+            
+            const uids = usersInShift.map(u => u.uid);
+            const statesQuery = query(collection(db, 'userStates'), where('__name__', 'in', uids));
+
+            const unsubscribe = onSnapshot(statesQuery, (statesSnapshot) => {
+                const userStates = statesSnapshot.docs.reduce((acc, doc) => {
+                    acc[doc.id] = doc.data() as UserState;
+                    return acc;
+                }, {} as Record<string, UserState>);
+
+                const rosterUsers = usersInShift.map(user => {
+                    const state = userStates[user.uid];
+                    let status: OnShiftUser['status'] = 'Logged Out';
+                    if (state?.isClockedIn) {
+                        switch(state.currentState) {
+                            case 'working': status = 'Working'; break;
+                            case 'break': status = 'On Break'; break;
+                            case 'lunch': status = 'On Lunch'; break;
+                            default: status = 'Logged Out';
+                        }
+                    }
+                    return { ...user, status };
+                });
+                setOnShiftUsers(rosterUsers);
             });
 
-            const rosterUsers = await Promise.all(rosterUsersPromises);
-            setOnShiftUsers(rosterUsers);
+            return unsubscribe;
         };
 
-        updateList();
-        const interval = setInterval(updateList, 30000); // Poll for updates every 30s
-        window.addEventListener('storage', updateList); // Listen for shift changes from admin
+        const unsubscribePromise = updateList();
+
+        const interval = setInterval(updateList, 60000); // Poll for shift changes every 60s
+        window.addEventListener('storage', updateList);
+        
         return () => {
+            unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
             clearInterval(interval);
             window.removeEventListener('storage', updateList);
         }
     }, []);
 
     const getActionBadgeVariant = (action: string) => {
-        if (action.includes('In') || action.includes('Started') || action === 'working') return 'secondary';
-        if (action.includes('Out')) return 'default';
+        if (action === 'Working') return 'secondary';
+        if (action === 'On Break' || action === 'On Lunch') return 'default';
         if (action === 'Logged Out') return 'destructive';
-        if (action === 'break' || action === 'lunch') return 'default';
         return 'outline';
     };
 
@@ -137,16 +133,8 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                                     <div>
                                         <div className="font-medium text-card-foreground">{u.name}</div>
                                         <div className="text-sm text-muted-foreground">{u.department}</div>
-                                        {(!simpleStatus && u.latestAction !== 'Logged Out') && (
-                                            <div className="text-xs text-primary">Last activity at {u.latestActionTime}</div>
-                                        )}
                                     </div>
-                                    {simpleStatus ? 
-                                     <Badge variant={u.latestAction === 'Logged Out' ? 'destructive' : 'secondary'}>
-                                        {u.latestAction === 'Logged Out' ? 'Logged Out' : 'Active'}
-                                     </Badge> :
-                                     <Badge variant={getActionBadgeVariant(u.latestAction)}>{u.latestAction}</Badge>
-                                    }
+                                     <Badge variant={getActionBadgeVariant(u.status)}>{u.status}</Badge>
                                 </div>
                             ))
                         )}

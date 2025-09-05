@@ -8,18 +8,17 @@ import AuthCheck from '@/components/shared/AuthCheck';
 import ActionCard from '@/components/dashboard/ActionCard';
 import StatusCard from '@/components/dashboard/StatusCard';
 import SummaryCard from '@/components/dashboard/SummaryCard';
-import ActivityLog from '@/components/dashboard/ActivityLog';
 import OnBreakList from '@/components/dashboard/OnBreakList';
 import TeamOverbreakAlerts from '@/components/dashboard/TeamOverbreakAlerts';
 import StatisticsModal from '@/components/dashboard/StatisticsModal';
 import { Button } from '@/components/ui/button';
-import { BarChart2, Clock, LogOut } from 'lucide-react';
+import { BarChart2, Clock } from 'lucide-react';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { status, activityLog, summary, countdown, startAction, endAction, clockIn, clockOut } = useTimeTracker();
+  const { status, summary, countdown, startAction, endAction, clockIn, clockOut } = useTimeTracker();
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
 
   return (
@@ -83,9 +82,6 @@ export default function DashboardPage() {
                 disabled={!status.isClockedIn || status.currentState !== 'working'}
                 isActive={status.currentState === 'lunch'}
               />
-            </div>
-            <div className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                <ActivityLog log={activityLog} />
             </div>
             <div>
                  <TeamOverbreakAlerts />
