@@ -149,7 +149,6 @@ export async function getTimesheetForUserByMonth(uid: string, year: number, mont
     }
 }
 
-// New function to get all users from Firestore
 export async function getAllUsersFromFirestore(): Promise<{ success: boolean, users: User[] }> {
     const db = getDb();
     const usersCol = db.collection('users');
@@ -158,7 +157,6 @@ export async function getAllUsersFromFirestore(): Promise<{ success: boolean, us
     return { success: true, users };
 }
 
-// New function to get all users from Firebase Auth
 export async function getAllUsersFromAuth(): Promise<{ success: boolean, users: admin.auth.UserRecord[] }> {
     const auth = getAdminAuth();
     const userRecords = await auth.listUsers();
@@ -166,7 +164,6 @@ export async function getAllUsersFromAuth(): Promise<{ success: boolean, users: 
     return { success: true, users };
 }
 
-// New function to delete a user only from Firestore
 export async function deleteUserFromFirestore(uid: string): Promise<void> {
     const db = getDb();
     console.log(`Deleting user ${uid} from Firestore collections.`);
@@ -206,7 +203,7 @@ export async function getUsersOnBreakOrLunch() {
         if (userIds.length === 0) {
             return { success: true, users: [] };
         }
-
+        
         const usersQuery = db.collection("users").where(admin.firestore.FieldPath.documentId(), "in", userIds);
         const usersSnapshot = await usersQuery.get();
         const usersData = usersSnapshot.docs.reduce((acc, doc) => {
@@ -232,4 +229,23 @@ export async function getUsersOnBreakOrLunch() {
         console.error("Error fetching users on break/lunch:", errorMessage);
         return { success: false, message: `Failed to retrieve users: ${errorMessage}`, users: [] };
     }
+}
+
+export async function getUserStates(uids: string[]): Promise<{ success: boolean; states?: Record<string, UserState>; message?: string }> {
+  if (uids.length === 0) {
+    return { success: true, states: {} };
+  }
+  try {
+    const db = getDb();
+    const statesQuery = db.collection('userStates').where(admin.firestore.FieldPath.documentId(), 'in', uids);
+    const statesSnapshot = await statesQuery.get();
+    const states = statesSnapshot.docs.reduce((acc, doc) => {
+      acc[doc.id] = doc.data() as UserState;
+      return acc;
+    }, {} as Record<string, UserState>);
+    return { success: true, states };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return { success: false, message: `Failed to retrieve user states: ${errorMessage}` };
+  }
 }
