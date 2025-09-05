@@ -8,8 +8,9 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, onSnapshot, Query, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, Query, doc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
+import { getUserStates } from '@/lib/firebase-admin';
 
 
 interface OnShiftUser extends User {
@@ -100,15 +101,10 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             }
             
             const otherUserUids = usersInShift.filter(u => u.uid !== currentUser.uid).map(u => u.uid);
-            let otherUserStates: Record<string, UserState> = {};
             
-            if (otherUserUids.length > 0) {
-                const statesQuery = query(collection(db, 'userStates'), where('__name__', 'in', otherUserUids));
-                const statesSnapshot = await getDocs(statesQuery);
-                 statesSnapshot.forEach(doc => {
-                    otherUserStates[doc.id] = doc.data() as UserState;
-                });
-            }
+            // Fetch other user states using the secure server action
+            const statesResult = await getUserStates(otherUserUids);
+            const otherUserStates = statesResult.success ? statesResult.states || {} : {};
            
             const updateRoster = (currentUserState?: UserState) => {
                  const rosterUsers = usersInShift.map(user => {
@@ -125,7 +121,6 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                 updateRoster(currentUserState);
             }, (error) => {
                 console.error("Error on user state snapshot:", error);
-                // On error, just show the roster without real-time updates for current user.
                 updateRoster(undefined);
             });
         };
