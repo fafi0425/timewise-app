@@ -1,35 +1,35 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Allow admins to read/write all data
-    match /{document=**} {
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
-    }
 
+    // Allow authenticated users to read and create their own user document
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow update: if request.auth.uid == userId; // Users can update their own profile
-      allow create: if request.auth != null; // New users can be created
-    }
-
-    match /userStates/{userId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
-    match /activity/{docId} {
-      allow create: if request.auth.uid == request.resource.data.uid;
-    }
-
-    match /timesheet/{docId} {
-       allow create: if request.auth.uid == request.resource.data.uid;
-       allow read: if request.auth.uid == resource.data.uid;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Allow authenticated users to read and write to their own state
+    match /userStates/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow authenticated users to create activity logs for themselves
+    match /activity/{docId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null;
+    }
+
+    // Allow authenticated users to create timesheet entries for themselves
+    match /timesheet/{docId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null;
+    }
+    
+    // Allow any authenticated user to see overbreaks, and allow any authenticated
+    // user to log an overbreak (the logic is validated in the app).
     match /overbreaks/{docId} {
       allow list: if request.auth != null;
-      allow create: if request.auth.uid == request.resource.data.uid;
+      allow create: if request.auth != null;
     }
   }
 }

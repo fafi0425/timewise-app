@@ -66,8 +66,8 @@ export default function useTimeTracker() {
     isDanger: false,
   });
 
-  const logActivity = useCallback(async (action: ActivityLog['action'], duration: number | null = null) => {
-    if (!user) return;
+  const logActivity = useCallback(async (action: ActivityLog['action'], duration: number | null = null): Promise<Omit<ActivityLog, 'id'>> => {
+    if (!user) throw new Error("User not found for logging activity");
 
     const newLog: Omit<ActivityLog, 'id'> = {
       uid: user.uid,
