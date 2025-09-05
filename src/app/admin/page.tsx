@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getAllActivityAction, getAllTimesheetAction } from '@/lib/firebase-admin';
-import type { User, ActivityLog, Shift, TimesheetEntry } from '@/lib/types';
+import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth } from '@/lib/firebase-admin';
+import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
@@ -33,8 +33,23 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import TimesheetCard from '@/components/admin/TimesheetCard';
+import { processTimesheet } from '@/ai/flows/timesheet-flow';
 
+const MONTHS = [
+    { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
+    { value: 3, name: 'April' }, { value: 4, name: 'May' }, { value: 5, name: 'June' },
+    { value: 6, name: 'July' }, { value: 7, name: 'August' }, { value: 8, name: 'September' },
+    { value: 9, name: 'October' }, { value: 10, name: 'November' }, { value: 11, name: 'December' }
+];
+
+const getYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i >= currentYear - 5; i--) {
+        years.push(i);
+    }
+    return years;
+};
 
 const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) => (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -57,7 +72,6 @@ export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
-    const [timesheet, setTimesheet] = useState<TimesheetEntry[]>([]);
     const [overbreaks, setOverbreaks] = useState<any[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     
@@ -69,7 +83,7 @@ export default function AdminPage() {
     const [newUserShift, setNewUserShift] = useState<Shift | ''>('');
 
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [selectedUserForShift, setSelectedUserForShift] = useState<User | null>(null);
     const [selectedShift, setSelectedShift] = useState<Shift | ''>('');
     
     const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
@@ -82,15 +96,23 @@ export default function AdminPage() {
     const [filterEmployee, setFilterEmployee] = useState('all');
     const [isCleaning, setIsCleaning] = useState(false);
 
+    // State for timesheet viewer
+    const [selectedTimesheetUser, setSelectedTimesheetUser] = useState<string>('');
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    const [processedData, setProcessedData] = useState<ProcessedDay[]>([]);
+    const [isTimesheetLoading, setIsTimesheetLoading] = useState(false);
+    const YEARS = getYears();
+
+
     const { toast } = useToast();
 
     const refreshData = useCallback(async () => {
         setIsLoadingData(true);
         try {
-            const [usersResult, activityResult, timesheetResult] = await Promise.all([
+            const [usersResult, activityResult] = await Promise.all([
                 getAllUsersAction(),
                 getAllActivityAction(),
-                getAllTimesheetAction()
             ]);
 
             if (usersResult.success && usersResult.users) {
@@ -123,13 +145,6 @@ export default function AdminPage() {
             } else {
                 toast({ title: "Error Fetching Activity", description: activityResult.message, variant: "destructive" });
                 setAllActivity([]);
-            }
-
-            if (timesheetResult.success && timesheetResult.timesheet) {
-                setTimesheet(timesheetResult.timesheet);
-            } else {
-                toast({ title: "Error Fetching Timesheet", description: timesheetResult.message, variant: "destructive" });
-                setTimesheet([]);
             }
 
         } catch (error: any) {
@@ -196,7 +211,7 @@ export default function AdminPage() {
     };
 
     const openEditShiftModal = (user: User) => {
-        setSelectedUser(user);
+        setSelectedUserForShift(user);
         setSelectedShift(user.shift || 'none');
         setIsShiftModalOpen(true);
     };
@@ -221,7 +236,7 @@ export default function AdminPage() {
     };
 
     const handleUpdateShift = async () => {
-        if (!selectedUser || !selectedShift) {
+        if (!selectedUserForShift || !selectedShift) {
             toast({ title: "Error", description: "Please select a shift.", variant: "destructive" });
             return;
         }
@@ -230,13 +245,13 @@ export default function AdminPage() {
         
         // Optimistic update
         const updatedUsers = users.map(u => 
-            u.uid === selectedUser.uid ? { ...u, shift: selectedShift as Shift } : u
+            u.uid === selectedUserForShift.uid ? { ...u, shift: selectedShift as Shift } : u
         );
         setUsers(updatedUsers);
         setIsShiftModalOpen(false);
         
         try {
-            const result = await assignUserShift({ userId: selectedUser.uid, shift: selectedShift as Shift });
+            const result = await assignUserShift({ userId: selectedUserForShift.uid, shift: selectedShift as Shift });
 
             if (result.success) {
                 toast({ title: "Success", description: result.message });
@@ -252,7 +267,7 @@ export default function AdminPage() {
             toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
         }
         
-        setSelectedUser(null);
+        setSelectedUserForShift(null);
         setSelectedShift('');
     };
 
@@ -360,6 +375,56 @@ export default function AdminPage() {
         }
         setIsCleaning(false);
     };
+
+    const handleFetchTimesheet = async () => {
+        const user = users.find(u => u.uid === selectedTimesheetUser);
+        if (!user) {
+            toast({ title: "Error", description: "Please select an employee.", variant: 'destructive' });
+            return;
+        }
+
+        setIsTimesheetLoading(true);
+        try {
+            const result = await getTimesheetForUserByMonth(user.uid, selectedYear, selectedMonth);
+
+            if (!result.success) {
+                toast({ title: "Error", description: result.message, variant: 'destructive' });
+                setProcessedData([]);
+                return;
+            }
+            
+            const rawEntries = result.timesheet || [];
+
+            if (rawEntries.length === 0) {
+                toast({ title: "No Data", description: `No timesheet entries found for ${user.name} for the selected month.` });
+                setProcessedData([]);
+                return;
+            }
+            
+            const shift = user.shift || 'none';
+            let shiftDetails = {};
+            if (shift === 'custom') {
+                // For admin view, we don't have local storage, this is a limitation.
+                // We'll have to rely on a default or enhance this later if custom shifts are per-user.
+                shiftDetails = { shiftStart: "09:00", shiftEnd: "17:00" };
+            }
+
+            const aiResult = await processTimesheet({
+                timesheetEntries: rawEntries,
+                shift: shift,
+                ...shiftDetails,
+            });
+
+            setProcessedData(aiResult.processedDays.reverse());
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            toast({ title: "Error", description: `Failed to process timesheet: ${errorMessage}`, variant: 'destructive' });
+        } finally {
+            setIsTimesheetLoading(false);
+        }
+    };
+
 
     if (isLoadingData) {
         return (
@@ -551,9 +616,99 @@ export default function AdminPage() {
                     <DailySummaryCard activityLogs={allActivity} />
                  </div>
                  <div className="lg:col-span-1">
-                    <TimesheetCard timesheet={timesheet} />
+                    <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 h-full">
+                        <CardHeader className="!p-0 !pb-6">
+                            <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
+                                <Clock className="mr-2 h-5 w-5 text-primary" /> Employee Timesheet Viewer
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="!p-0">
+                            <div className="flex flex-col gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Employee</Label>
+                                        <Select value={selectedTimesheetUser} onValueChange={setSelectedTimesheetUser}>
+                                            <SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger>
+                                            <SelectContent>
+                                                {users.filter(u => u.role !== 'Administrator').map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label>Month</Label>
+                                        <Select value={String(selectedMonth)} onValueChange={(val) => setSelectedMonth(Number(val))}>
+                                            <SelectTrigger><SelectValue placeholder="Select Month" /></SelectTrigger>
+                                            <SelectContent>
+                                                {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label>Year</Label>
+                                         <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                                            <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
+                                            <SelectContent>
+                                                {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <Button onClick={handleFetchTimesheet} disabled={isTimesheetLoading}>
+                                    {isTimesheetLoading ? <LoaderCircle className="animate-spin" /> : 'View Timesheet'}
+                                </Button>
+                            </div>
+                            
+                        </CardContent>
+                    </Card>
                  </div>
             </div>
+
+             {processedData.length > 0 && (
+                <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
+                     <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">
+                        Timesheet for {users.find(u => u.uid === selectedTimesheetUser)?.name}
+                     </CardTitle>
+                     <ScrollArea className="h-80">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Clock In</TableHead>
+                                    <TableHead>Clock Out</TableHead>
+                                    <TableHead>Late</TableHead>
+                                    <TableHead>Undertime</TableHead>
+                                    <TableHead>Regular</TableHead>
+                                    <TableHead>OT</TableHead>
+                                    <TableHead>Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isTimesheetLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center h-24">
+                                            <LoaderCircle className="mx-auto h-8 w-8 animate-spin text-primary" />
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    processedData.map((day) => (
+                                        <TableRow key={day.date}>
+                                            <TableCell>{day.date}</TableCell>
+                                            <TableCell>{day.clockIn}</TableCell>
+                                            <TableCell>{day.clockOut}</TableCell>
+                                            <TableCell className={day.late !== '00:00' ? 'text-orange-500' : ''}>{day.late}</TableCell>
+                                            <TableCell className={day.undertime !== '00:00' ? 'text-red-500' : ''}>{day.undertime}</TableCell>
+                                            <TableCell>{day.regularHours}</TableCell>
+                                            <TableCell className={day.otHours !== '00:00' ? 'text-green-500' : ''}>{day.otHours}</TableCell>
+                                            <TableCell className="font-bold">{day.totalHours}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                     </ScrollArea>
+                </Card>
+             )}
+
 
             <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
                 <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
@@ -574,7 +729,7 @@ export default function AdminPage() {
             <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Edit Shift for {selectedUser?.name}</DialogTitle>
+                  <DialogTitle>Edit Shift for {selectedUserForShift?.name}</DialogTitle>
                   <DialogDescription>
                     Select the new shift schedule for this user. This will determine when they appear on the "On Shift" roster.
                   </DialogDescription>
@@ -705,11 +860,5 @@ export default function AdminPage() {
         </main>
     </AuthCheck>
     );
-
-    
-
-
-
-
 
     
