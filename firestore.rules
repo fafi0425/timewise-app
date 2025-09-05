@@ -1,32 +1,53 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if a user is an Administrator
+    function isAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+    }
+
+    // Users collection:
+    // - Allow create for any user (for sign-up)
+    // - Allow read/update for the user themselves or any admin
+    // - Allow delete for admins only
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null; // Admins or users can create their own profile
+      allow read, update: if request.auth.uid == userId || isAdmin();
+      allow create; // Anyone can create a user (sign up)
+      allow delete: if isAdmin();
     }
 
+    // User States collection:
+    // - Users can read and write their own state document.
     match /userStates/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    match /activity/{activityId} {
-      allow read, write: if request.auth != null; // More specific rules can be added here
+    // Activity Logs collection:
+    // - Users can create their own activity logs.
+    // - Users can read only their own activity logs.
+    // - Admins can read all activity logs.
+    match /activity/{logId} {
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow read: if request.auth.uid == resource.data.uid || isAdmin();
     }
 
-    match /timesheet/{timesheetId} {
-      allow read, write: if request.auth != null;
+    // Timesheet collection:
+    // - Users can create their own timesheet entries.
+    // - Users can read only their own entries.
+    // - Admins can read all entries.
+    match /timesheet/{entryId} {
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow read: if request.auth.uid == resource.data.uid || isAdmin();
     }
 
+    // Overbreaks collection:
+    // - Allow create if the user is writing their own record.
+    // - Allow read for any authenticated user to see team alerts.
     match /overbreaks/{overbreakId} {
-      // Allow authenticated users to read all overbreak alerts
-      allow read: if request.auth != null;
-      // Allow a user to create their own overbreak log
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+       allow create: if request.auth.uid == request.resource.data.uid;
+       allow read: if request.auth != null;
     }
-
   }
 }
