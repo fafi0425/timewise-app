@@ -5,7 +5,6 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/lib/types';
 import { authenticateUser, signOutUser } from '@/lib/auth';
-import { endWorkSession } from '@/hooks/useTimeTracker';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -84,17 +83,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    if (user && user.role !== 'Administrator') {
-      try {
-        const userStateDoc = await getDoc(doc(db, 'userStates', user.uid));
-        if (userStateDoc.exists() && userStateDoc.data().isClockedIn) {
-          await endWorkSession(user);
-        }
-      } catch (error) {
-        console.error('Error ending work session during logout:', error);
-      }
-    }
-
     try {
       await signOutUser();
     } catch (error) {

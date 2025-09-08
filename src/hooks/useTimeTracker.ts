@@ -20,6 +20,10 @@ import {
 } from 'firebase/firestore';
 
 const logTimesheetEvent = async (user: User, action: TimesheetAction) => {
+    if (!user) {
+        console.error("User not authenticated, cannot log timesheet event.");
+        return;
+    }
     const newEntry: Omit<TimesheetEntry, 'id'> = {
       uid: user.uid,
       employeeName: user.name,
@@ -30,19 +34,6 @@ const logTimesheetEvent = async (user: User, action: TimesheetAction) => {
     };
     await addDoc(collection(db, 'timesheet'), newEntry);
 }
-
-export const endWorkSession = async (sessionUser: User) => {
-    const newLog: Omit<ActivityLog, 'id'> = {
-      uid: sessionUser.uid,
-      employeeName: sessionUser.name,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      action: 'Work Ended',
-      duration: null,
-      timestamp: Date.now()
-    };
-    await addDoc(collection(db, 'activity'), newLog);
-};
 
 const logOverbreak = async (logData: Omit<ActivityLog, 'id'>) => {
     await addDoc(collection(db, 'overbreaks'), logData);
@@ -108,6 +99,8 @@ export default function useTimeTracker() {
              setStatus(defaultState);
              setDoc(stateDocRef, defaultState);
         }
+    }, (error) => {
+        console.error("Error in user state listener:", error);
     });
 
     return () => unsubscribe();
