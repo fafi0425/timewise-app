@@ -33,7 +33,7 @@ export default function TimesheetPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [processedData, setProcessedData] = useState<ProcessedDay[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const YEARS = getYears();
@@ -57,6 +57,7 @@ export default function TimesheetPage() {
 
             if (rawEntries.length === 0) {
                 setProcessedData([]);
+                toast({ title: "No Data", description: "No timesheet entries found for the selected period." });
                 setIsLoading(false);
                 return;
             }
@@ -86,13 +87,12 @@ export default function TimesheetPage() {
             setIsLoading(false);
         }
     };
+    
+    // Set initial state without fetching data automatically.
+     useEffect(() => {
+        setIsLoading(false);
+    }, []);
 
-    useEffect(() => {
-        if (user) {
-            fetchAndProcessTimesheet();
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]);
 
     return (
         <AuthCheck>
@@ -167,7 +167,7 @@ export default function TimesheetPage() {
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={8} className="text-center h-24">
-                                                No timesheet entries found for {MONTHS.find(m => m.value === selectedMonth)?.name} {selectedYear}.
+                                                Select a month and year, then click "View" to see your timesheet.
                                             </TableCell>
                                         </TableRow>
                                     )}
