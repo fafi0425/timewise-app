@@ -52,7 +52,8 @@ export const authenticateUser = async (email: string, pass: string): Promise<Use
 
   } catch (error: any) {
     if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-         console.error("Firebase Authentication failed: Invalid credentials provided.");
+         // This is an expected error when the user enters wrong credentials.
+         // We throw a user-friendly error to be displayed in the UI.
          throw new Error("Invalid email or password. Please try again.");
     }
     console.error(`Firebase Authentication failed: ${error.message}`);
