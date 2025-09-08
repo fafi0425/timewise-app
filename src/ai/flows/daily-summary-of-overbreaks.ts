@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A daily summary of employees who have exceeded their break or lunch times.
@@ -12,7 +13,7 @@ import {z} from 'genkit';
 
 const DailySummaryOfOverbreaksInputSchema = z.object({
   date: z.string().describe('The date for which to generate the summary.'),
-  activityData: z.string().describe('The stringified JSON of all activity logs for the day.'),
+  activityData: z.array(z.any()).describe('The array of all activity log objects for the day.'),
 });
 export type DailySummaryOfOverbreaksInput = z.infer<typeof DailySummaryOfOverbreaksInputSchema>;
 
@@ -33,10 +34,13 @@ const prompt = ai.definePrompt({
 
   Date: {{{date}}}
 
-  Activity Data: {{{activityData}}}
+  Activity Data:
+  {{#each activityData}}
+  - Employee: {{this.employeeName}}, Action: {{this.action}}, Duration: {{this.duration}} minutes
+  {{/each}}
 
   Analyze the activity data and identify employees who have exceeded their allowed break or lunch times.
-  Breaks should not exceed 15 minutes, and lunches should not exceed 60 minutes. Provide a concise summary of these violations.
+  Breaks ("Break In" action) should not exceed 15 minutes, and lunches ("Lunch In" action) should not exceed 60 minutes. Provide a concise summary of these violations.
   The summary should include the employee's name, the type of break (break or lunch), the duration of the break, and how much they exceeded the limit.
   If no employees exceeded their break or lunch times, state that clearly.
 `,
@@ -57,7 +61,6 @@ const dailySummaryOfOverbreaksFlow = ai.defineFlow(
       return output;
     } catch (error) {
        console.error(`[DailySummaryFlow] Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-       // Ensure the returned object matches the Zod schema
        return {
          summary: "The AI summary is temporarily unavailable as the service is currently overloaded. Please try again in a few moments."
        };

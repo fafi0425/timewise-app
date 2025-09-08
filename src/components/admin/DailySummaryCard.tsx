@@ -30,7 +30,7 @@ export default function DailySummaryCard({ activityLogs }: DailySummaryCardProps
             try {
                 const result = await getDailySummaryOfOverbreaks({
                     date: today,
-                    activityData: JSON.stringify(todaysLogs),
+                    activityData: todaysLogs,
                 });
                 setSummary(result.summary);
             } catch (error) {
