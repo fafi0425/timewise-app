@@ -84,19 +84,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    if(user && user.role !== 'Administrator'){
-       const userStateDoc = await getDoc(doc(db, 'userStates', user.uid));
-       if (userStateDoc.exists() && userStateDoc.data().isClockedIn) {
-           await endWorkSession(user);
-       }
+    if (user && user.role !== 'Administrator') {
+      try {
+        const userStateDoc = await getDoc(doc(db, 'userStates', user.uid));
+        if (userStateDoc.exists() && userStateDoc.data().isClockedIn) {
+          await endWorkSession(user);
+        }
+      } catch (error) {
+        console.error('Error ending work session during logout:', error);
+      }
     }
+
     try {
-        await signOutUser();
+      await signOutUser();
     } catch (error) {
-        console.error("Error during sign out:", error);
+      console.error('Error during sign out:', error);
     } finally {
-        setUser(null);
-        router.push('/login');
+      setUser(null);
+      router.push('/login');
     }
   };
 
