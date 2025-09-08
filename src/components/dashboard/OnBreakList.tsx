@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coffee, Utensils } from 'lucide-react';
-import type { User } from '@/lib/types';
-import { getUsersOnBreakOrLunch } from '@/lib/firebase-admin';
+import type { User, UserState } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 
 interface OnBreakUser extends User {
     type: 'break' | 'lunch';
@@ -14,19 +15,48 @@ export default function OnBreakList() {
   const [onBreakUsers, setOnBreakUsers] = useState<OnBreakUser[]>([]);
 
   useEffect(() => {
-    const fetchOnBreakUsers = async () => {
-        const result = await getUsersOnBreakOrLunch();
-        if (result.success && result.users) {
-            setOnBreakUsers(result.users as OnBreakUser[]);
-        } else {
-            console.error("Failed to fetch users on break/lunch:", result.message);
-        }
-    };
+    // Query for users who are on break or lunch
+    const statesQuery = query(
+      collection(db, "userStates"),
+      where('currentState', 'in', ['break', 'lunch'])
+    );
 
-    fetchOnBreakUsers(); // Initial fetch
-    const interval = setInterval(fetchOnBreakUsers, 30000); // Poll every 30 seconds
+    const unsubscribe = onSnapshot(statesQuery, async (statesSnapshot) => {
+      if (statesSnapshot.empty) {
+        setOnBreakUsers([]);
+        return;
+      }
 
-    return () => clearInterval(interval);
+      const userIds = statesSnapshot.docs.map(doc => doc.id);
+      
+      // Get the corresponding user documents
+      const usersQuery = query(collection(db, "users"), where('__name__', 'in', userIds));
+      const usersSnapshot = await getDocs(usersQuery);
+
+      const usersData = usersSnapshot.docs.reduce((acc, doc) => {
+        acc[doc.id] = doc.data() as User;
+        return acc;
+      }, {} as Record<string, User>);
+
+      const combinedData = statesSnapshot.docs.map(stateDoc => {
+        const user = usersData[stateDoc.id];
+        const state = stateDoc.data() as UserState;
+        if (!user) return null;
+
+        return {
+          ...user,
+          type: state.currentState as 'break' | 'lunch',
+          startTime: state.currentState === 'break' ? state.breakStartTime : state.lunchStartTime,
+        };
+      }).filter((user): user is OnBreakUser => user !== null);
+
+      setOnBreakUsers(combinedData);
+    }, (error) => {
+        console.error("Error fetching users on break/lunch:", error);
+    });
+
+    // Cleanup the listener when the component unmounts
+    return () => unsubscribe();
   }, []);
 
   return (
