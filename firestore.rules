@@ -2,39 +2,35 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can read their own profile information.
-    // Writes are handled by admin/backend functions.
+    // Users can only read/write their own user document.
+    // Administrators can list all users.
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if false; // Disallow client-side writes
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
     }
 
-    // A user can read and write to their own state document.
-    // This is necessary for tracking clock-in, break, and lunch status.
+    // User can only read/write their own state document.
     match /userStates/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Authenticated users can create their own activity logs.
-    // Reading logs is handled by the admin backend for security.
+    // Administrators can list all activity logs.
     match /activity/{activityId} {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow read, update, delete: if false;
+      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
     }
-
+    
     // Authenticated users can create their own timesheet entries.
     match /timesheet/{entryId} {
         allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-        allow read, update, delete: if false;
     }
 
-    // Any authenticated user can create an overbreak record.
-    // Any authenticated user can read the list of overbreaks for the alerts.
+    // Authenticated users can read overbreaks for real-time alerts.
+    // Overbreaks are only created by the server, so no client-side create rule is needed.
     match /overbreaks/{overbreakId} {
-      allow create: if request.auth != null;
       allow read: if request.auth != null;
-      allow update, delete: if false;
     }
   }
 }
