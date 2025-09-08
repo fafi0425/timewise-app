@@ -3,11 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // A user can read/update their own profile.
-    // An admin can manage all users via server-side logic (bypasses these rules).
+    // Users can only manage their own user document.
     match /users/{userId} {
       allow read, update: if request.auth != null && request.auth.uid == userId;
-      // Allow user creation for sign-up
+      // Allow user creation for sign-up process.
       allow create: if request.auth != null;
     }
     
@@ -17,20 +16,20 @@ service cloud.firestore {
     }
 
     // A user can only create their own activity logs.
-    // Reading activity logs for other users must be done via a secure server action.
     match /activity/{activityId} {
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      // Reading activity logs for others is handled by secure server actions.
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
     }
     
-    // Only secure server actions can write overbreaks.
-    // Authenticated users can read them for real-time dashboard alerts.
+    // Overbreaks are only read by secure server actions. No client access.
     match /overbreaks/{overbreakId} {
-       allow read: if request.auth != null;
+       allow read: if false;
+       allow list: if false;
+       allow write: if false;
     }
     
-    // A user can only create their own timesheet entries.
-    // Reading must be done for the logged-in user.
+    // A user can only create and read their own timesheet entries.
     match /timesheet/{entryId} {
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
