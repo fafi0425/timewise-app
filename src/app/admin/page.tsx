@@ -33,7 +33,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { processTimesheet } from '@/ai/flows/timesheet-flow';
+import { processTimesheetData } from '@/lib/timesheet-processor';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -411,13 +411,13 @@ export default function AdminPage() {
                 shiftDetails = { shiftStart: "09:00", shiftEnd: "17:00" };
             }
 
-            const aiResult = await processTimesheet({
+            const clientResult = processTimesheetData({
                 timesheetEntries: rawEntries,
                 shift: shift,
                 ...shiftDetails,
             });
 
-            setProcessedData(aiResult.processedDays.reverse());
+            setProcessedData(clientResult.processedDays.reverse());
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -767,7 +767,7 @@ export default function AdminPage() {
                   <DialogDescription>
                     Update the user's details below.
                   </DialogDescription>
-                </DialogHeader>
+                </Header>
                 {editingUser && (
                 <div className="py-4 space-y-4">
                     <div>

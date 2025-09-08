@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoaderCircle } from 'lucide-react';
 import type { ProcessedDay } from '@/lib/types';
-import { processTimesheet } from '@/ai/flows/timesheet-flow';
 import { getTimesheetForUserByMonth } from '@/lib/firebase-admin';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { processTimesheetData } from '@/lib/timesheet-processor';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -62,7 +62,7 @@ export default function TimesheetPage() {
                 return;
             }
             
-            // 2. Process data with the AI flow
+            // 2. Process data with the new client-side function
             const shift = user.shift || 'none';
             let shiftDetails = {};
             if (shift === 'custom') {
@@ -71,13 +71,13 @@ export default function TimesheetPage() {
                 shiftDetails = { shiftStart: customStartTime, shiftEnd: customEndTime };
             }
 
-            const aiResult = await processTimesheet({
+            const clientResult = processTimesheetData({
                 timesheetEntries: rawEntries,
                 shift: shift,
                 ...shiftDetails,
             });
 
-            setProcessedData(aiResult.processedDays.reverse()); // Show most recent first
+            setProcessedData(clientResult.processedDays.reverse()); // Show most recent first
 
         } catch (error) {
             console.error("Error fetching or processing timesheet:", error);

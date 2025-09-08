@@ -15,7 +15,7 @@ export interface User {
 export type TimesheetAction = 'Clock In' | 'Clock Out';
 
 export interface TimesheetEntry {
-  id: string;
+  id?: string; // Made optional as it's not present on creation
   uid: string;
   employeeName: string;
   date: string;
@@ -48,7 +48,7 @@ export interface UserState {
 export type Shift = 'morning' | 'mid' | 'night' | 'custom' | 'none';
 
 
-// Schemas for Timesheet Processing Flow
+// Schemas for Timesheet Processing
 export const ProcessTimesheetInputSchema = z.object({
   timesheetEntries: z.array(z.any()).describe('An array of raw timesheet entries for a user.'),
   shift: z.custom<Shift>().describe("The user's assigned shift (morning, mid, night, or custom)."),
