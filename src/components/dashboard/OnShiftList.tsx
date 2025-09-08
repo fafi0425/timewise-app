@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -8,17 +8,13 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, onSnapshot, Query, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
-import { getUserStates } from '@/lib/firebase-admin';
+import { getUserStates, getAllUsersAction } from '@/lib/firebase-admin';
 
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
-}
-
-interface OnShiftListProps {
-    simpleStatus?: boolean;
 }
 
 const getOverlappingShift = (hour: number): Shift | null => {
@@ -44,36 +40,30 @@ const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
 export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) {
     const { user: currentUser } = useAuth();
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
-    const [activeShiftFilter, setActiveShiftFilter] = useState<Shift>('morning');
     const [title, setTitle] = useState('Current Shift Roster');
+    const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        let unsubscribe: (() => void) | null = null;
-        
-        const updateList = async () => {
-            if (!currentUser) return;
-            // Clean up previous listener
-            if (unsubscribe) unsubscribe();
+    const updateList = useCallback(async () => {
+        if (!currentUser) return;
+        setIsLoading(true);
 
+        try {
             const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
-            
             const now = new Date();
             const currentHour = now.getHours();
-            
+
             let actualCurrentShift: Shift = 'morning';
             const nightShiftEnd = SHIFTS.night.end!;
             const nightShiftStart = SHIFTS.night.start!;
             if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
-                 actualCurrentShift = 'night';
+                actualCurrentShift = 'night';
             } else if (currentHour >= SHIFTS.morning.start! && currentHour < SHIFTS.morning.end!) {
                 actualCurrentShift = 'morning';
             } else if (currentHour >= SHIFTS.mid.start! && currentHour < SHIFTS.mid.end!) {
                 actualCurrentShift = 'mid';
             }
-            
-            const shiftToDisplay = shiftFilter || actualCurrentShift;
-            setActiveShiftFilter(shiftToDisplay);
 
+            const shiftToDisplay = shiftFilter || actualCurrentShift;
             const overlappingShift = getOverlappingShift(currentHour);
             const shiftsToQuery: Shift[] = [shiftToDisplay];
             
@@ -85,57 +75,50 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             }
             setTitle(rosterTitle);
 
-            let usersInShiftQuery: Query;
-            if (shiftsToQuery.includes('custom')) {
-                 usersInShiftQuery = query(collection(db, "users"), where("role", "!=", "Administrator"));
-            } else {
-                 usersInShiftQuery = query(collection(db, "users"), where("shift", "in", shiftsToQuery), where("role", "!=", "Administrator"));
+            const usersResult = await getAllUsersAction();
+            if (!usersResult.success || !usersResult.users) {
+                setOnShiftUsers([]);
+                return;
             }
-            
-            const usersSnapshot = await getDocs(usersInShiftQuery);
-            const usersInShift = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+
+            const allUsers = usersResult.users;
+            const usersInShift = allUsers.filter(u => u.role !== 'Administrator' && u.shift && shiftsToQuery.includes(u.shift));
 
             if (usersInShift.length === 0) {
                 setOnShiftUsers([]);
                 return;
             }
-            
-            const otherUserUids = usersInShift.filter(u => u.uid !== currentUser.uid).map(u => u.uid);
-            
-            // Fetch other user states using the secure server action
-            const statesResult = await getUserStates(otherUserUids);
-            const otherUserStates = statesResult.success ? statesResult.states || {} : {};
-           
-            const updateRoster = (currentUserState?: UserState) => {
-                 const rosterUsers = usersInShift.map(user => {
-                    const state = user.uid === currentUser.uid ? currentUserState : otherUserStates[user.uid];
-                    const status = getUserStatus(state);
-                    return { ...user, status };
-                });
-                setOnShiftUsers(rosterUsers);
-            };
 
-            const currentUserStateRef = doc(db, 'userStates', currentUser.uid);
-            unsubscribe = onSnapshot(currentUserStateRef, (stateDoc) => {
-                const currentUserState = stateDoc.data() as UserState | undefined;
-                updateRoster(currentUserState);
-            }, (error) => {
-                console.error("Error on user state snapshot:", error);
-                updateRoster(undefined);
+            const userUids = usersInShift.map(u => u.uid);
+            const statesResult = await getUserStates(userUids);
+            const userStates = statesResult.success ? statesResult.states || {} : {};
+
+            const rosterUsers = usersInShift.map(user => {
+                const status = getUserStatus(userStates[user.uid]);
+                return { ...user, status };
             });
-        };
 
+            setOnShiftUsers(rosterUsers);
+
+        } catch (error) {
+            console.error("Error updating shift list:", error);
+            setOnShiftUsers([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentUser]);
+
+    useEffect(() => {
         updateList();
 
-        const interval = setInterval(updateList, 60000);
-        window.addEventListener('storage', updateList);
+        const interval = setInterval(updateList, 60000); // Poll every minute
+        window.addEventListener('storage', updateList); // Listen for manual shift changes
         
         return () => {
-            if (unsubscribe) unsubscribe();
             clearInterval(interval);
             window.removeEventListener('storage', updateList);
         }
-    }, [currentUser]);
+    }, [updateList]);
 
     const getActionBadgeVariant = (action: string) => {
         if (action === 'Working') return 'secondary';
@@ -164,7 +147,11 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
             <CardContent>
                 <ScrollArea className="h-72">
                     <div className="space-y-3">
-                        {onShiftUsers.length === 0 ? (
+                        {isLoading ? (
+                             <div className="text-center py-10 text-muted-foreground">
+                                <p>Loading shift roster...</p>
+                            </div>
+                        ) : onShiftUsers.length === 0 ? (
                             <div className="text-center py-10 text-muted-foreground">
                                 <p>No employees are assigned to or active in this shift.</p>
                             </div>
