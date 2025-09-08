@@ -1,4 +1,3 @@
-
 'use server';
 import 'server-only';
 import admin from 'firebase-admin';
@@ -281,5 +280,3 @@ export async function getUserStates(uids: string[]): Promise<{ success: boolean;
     return { success: false, message: `Failed to retrieve user states: ${errorMessage}` };
   }
 }
-
-    

@@ -2,35 +2,38 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own user document.
-    // Administrators can list all users.
+    
+    // A user can read/update their own profile.
+    // An admin can manage all users via server-side logic (bypasses these rules).
     match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // Allow user creation for sign-up
       allow create: if request.auth != null;
-      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
     }
-
-    // User can only read/write their own state document.
+    
+    // A user can only read and write their own real-time state document.
     match /userStates/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Authenticated users can create their own activity logs.
-    // Administrators can list all activity logs.
+    // A user can only create their own activity logs.
+    // Reading activity logs for other users must be done via a secure server action.
     match /activity/{activityId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
     }
     
-    // Authenticated users can create their own timesheet entries.
-    match /timesheet/{entryId} {
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-    }
-
-    // Authenticated users can read overbreaks for real-time alerts.
-    // Overbreaks are only created by the server, so no client-side create rule is needed.
+    // Only secure server actions can write overbreaks.
+    // Authenticated users can read them for real-time dashboard alerts.
     match /overbreaks/{overbreakId} {
-      allow read: if request.auth != null;
+       allow read: if request.auth != null;
+    }
+    
+    // A user can only create their own timesheet entries.
+    // Reading must be done for the logged-in user.
+    match /timesheet/{entryId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
     }
   }
 }
