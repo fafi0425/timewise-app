@@ -51,9 +51,13 @@ const dailySummaryOfOverbreaksFlow = ai.defineFlow(
   async input => {
     try {
       const {output} = await prompt(input);
-      return output!;
+      if (!output) {
+        throw new Error('No output from prompt');
+      }
+      return output;
     } catch (error) {
        console.error(`[DailySummaryFlow] Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+       // Ensure the returned object matches the Zod schema
        return {
          summary: "The AI summary is temporarily unavailable as the service is currently overloaded. Please try again in a few moments."
        };
