@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow to handle assigning a shift to a user.
@@ -13,7 +14,7 @@ import { updateUserShiftInFirestore } from '@/lib/firebase-admin';
 
 const AssignUserShiftInputSchema = z.object({
   userId: z.string().describe('The unique identifier of the user.'),
-  shift: z.enum(['morning', 'mid', 'night', 'custom', 'none']).describe('The shift to assign to the user.'),
+  shift: z.enum(['morning', 'mid', 'night', 'custom', 'none', 'unpaid_leave', 'sick_leave', 'vacation_leave']).describe('The shift to assign to the user.'),
 });
 export type AssignUserShiftInput = z.infer<typeof AssignUserShiftInputSchema>;
 

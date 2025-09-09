@@ -45,7 +45,7 @@ export interface UserState {
   lunchStartTime: string | null;
 }
 
-export type Shift = 'morning' | 'mid' | 'night' | 'custom' | 'none';
+export type Shift = 'morning' | 'mid' | 'night' | 'custom' | 'none' | 'unpaid_leave' | 'sick_leave' | 'vacation_leave';
 
 
 // Schemas for Timesheet Processing

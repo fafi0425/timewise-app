@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
 import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction } from '@/lib/firebase-admin';
 import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
-import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
+import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle, SeparatorHorizontal } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,6 +34,7 @@ import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { processTimesheetData } from '@/lib/timesheet-processor';
+import { Separator } from '@/components/ui/separator';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -748,6 +749,10 @@ export default function AdminPage() {
                            {name}
                          </SelectItem>
                        ))}
+                       <Separator className="my-2" />
+                       <SelectItem value="unpaid_leave">Unpaid Leave</SelectItem>
+                       <SelectItem value="sick_leave">Sick Leave</SelectItem>
+                       <SelectItem value="vacation_leave">Vacation Leave</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
