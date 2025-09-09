@@ -8,8 +8,7 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
@@ -34,36 +33,44 @@ const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
     return 'Logged Out';
 };
 
-interface OnShiftListProps {
-  allUsers: User[];
-}
-
-export default function OnShiftList({ allUsers }: OnShiftListProps) {
+export default function OnShiftList() {
     const { user: currentUser } = useAuth();
+    const [allUsers, setAllUsers] = useState<User[]>([]);
     const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const stateColRef = collection(db, 'userStates');
-        const unsubscribe = onSnapshot(stateColRef, (snapshot) => {
-            const newStates: Record<string, UserState> = {};
-            snapshot.forEach(doc => {
-                newStates[doc.id] = doc.data() as UserState;
-            });
-            setUserStates(newStates);
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const usersResult = await getAllUsersAction();
+            let users: User[] = [];
+            if (usersResult.success && usersResult.users) {
+                users = usersResult.users;
+                setAllUsers(users);
+            }
+            
+            const uids = users.map(u => u.uid);
+            const statesResult = await getUserStates(uids);
+            if (statesResult.success && statesResult.states) {
+                setUserStates(statesResult.states);
+            }
+        } catch (error) {
+            console.error("Failed to fetch user data:", error);
+        } finally {
             setIsLoading(false);
-        }, (error) => {
-            console.error("Error fetching real-time user states:", error);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
+        }
     }, []);
 
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 30000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
+
     const updateOnShiftList = useCallback(() => {
-        if (!currentUser || !allUsers || allUsers.length === 0) {
+        if (!currentUser || allUsers.length === 0) {
             return;
         }
 

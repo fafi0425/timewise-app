@@ -1,5 +1,6 @@
+
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coffee, Utensils } from 'lucide-react';
 import type { User } from '@/lib/types';
@@ -14,27 +15,30 @@ export default function OnBreakList() {
   const [onBreakUsers, setOnBreakUsers] = useState<OnBreakUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchOnBreakUsers = async () => {
+  const fetchOnBreakUsers = useCallback(async () => {
       try {
+          setIsLoading(true);
           const result = await getUsersOnBreakOrLunch();
           if (result.success && result.users) {
               setOnBreakUsers(result.users as OnBreakUser[]);
           } else {
               console.error("Could not fetch on-break users:", result.message);
+              setOnBreakUsers([]);
           }
       } catch (error) {
           console.error("Error fetching on-break users:", error);
+          setOnBreakUsers([]);
       } finally {
           setIsLoading(false);
       }
-  }
+  }, []);
 
   useEffect(() => {
     fetchOnBreakUsers();
     const intervalId = setInterval(fetchOnBreakUsers, 30000); // Poll every 30 seconds
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [fetchOnBreakUsers]);
 
   return (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">

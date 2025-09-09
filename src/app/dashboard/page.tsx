@@ -15,27 +15,11 @@ import { Button } from '@/components/ui/button';
 import { BarChart2, Clock } from 'lucide-react';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import { Card, CardContent } from '@/components/ui/card';
-import type { User } from '@/lib/types';
-import { getAllUsersAction } from '@/lib/firebase-admin';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { status, summary, countdown, startAction, endAction, clockIn, clockOut } = useTimeTracker();
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-
-  const fetchUsers = useCallback(async () => {
-    const usersResult = await getAllUsersAction();
-    if (usersResult.success && usersResult.users) {
-      setAllUsers(usersResult.users);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-    const interval = setInterval(fetchUsers, 60000); // Periodically refresh user list
-    return () => clearInterval(interval);
-  }, [fetchUsers]);
 
   return (
     <AuthCheck>
@@ -101,7 +85,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-8">
                 <TeamOverbreakAlerts />
-                <OnShiftList allUsers={allUsers} />
+                <OnShiftList />
             </div>
           </div>
           

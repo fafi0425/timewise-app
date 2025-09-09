@@ -1,42 +1,40 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import type { ActivityLog } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { onSnapshot, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-
-const BREAK_LIMIT = 15;
-const LUNCH_LIMIT = 60;
+import { getOverbreaksAction } from '@/lib/firebase-admin';
 
 export default function TeamOverbreakAlerts() {
   const [overbreaks, setOverbreaks] = useState<ActivityLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    const q = collection(db, "overbreaks");
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const todayStr = new Date().toLocaleDateString();
-        const allOverbreaks: ActivityLog[] = [];
-        
-        querySnapshot.forEach((doc) => {
-            allOverbreaks.push({ id: doc.id, ...doc.data() } as ActivityLog);
-        });
-
-        const todaysOverbreaks = allOverbreaks.filter(log => log.date === todayStr);
-        todaysOverbreaks.sort((a, b) => b.timestamp - a.timestamp);
-        
-        setOverbreaks(todaysOverbreaks);
-    }, (error) => {
-        console.error("Error in TeamOverbreakAlerts snapshot listener:", error);
-    });
-
-    return () => unsubscribe();
+  const fetchOverbreaks = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getOverbreaksAction();
+      if (result.success && result.overbreaks) {
+        setOverbreaks(result.overbreaks);
+      } else {
+        console.error("Failed to fetch overbreaks:", result.message);
+        setOverbreaks([]);
+      }
+    } catch (error) {
+      console.error("Error fetching overbreaks:", error);
+      setOverbreaks([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchOverbreaks();
+    const interval = setInterval(fetchOverbreaks, 30000); // Poll for new overbreaks
+    return () => clearInterval(interval);
+  }, [fetchOverbreaks]);
 
   return (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -46,14 +44,16 @@ export default function TeamOverbreakAlerts() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 max-h-64 overflow-y-auto">
-        {overbreaks.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-4 text-muted-foreground">Loading alerts...</div>
+        ) : overbreaks.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">
             <p className="text-green-600">Great news! No team members have exceeded their break limits today.</p>
           </div>
         ) : (
           overbreaks.map(log => {
             const isBreak = log.action === 'Break In';
-            const limit = isBreak ? BREAK_LIMIT : LUNCH_LIMIT;
+            const limit = isBreak ? 15 : 60;
             const excess = log.duration! - limit;
             const type = isBreak ? 'Break' : 'Lunch';
             const isCurrentUser = user?.uid === log.uid;
