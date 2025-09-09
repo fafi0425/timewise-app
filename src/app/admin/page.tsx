@@ -585,7 +585,7 @@ export default function AdminPage() {
              )}
 
 
-            <div className="grid lg:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 gap-6 mb-8">
                  <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
                     <div className="flex justify-between items-center mb-6">
                      <CardTitle className="text-xl font-semibold text-card-foreground font-headline">User Management</CardTitle>
