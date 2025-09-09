@@ -4,3 +4,4 @@ import '@/ai/flows/daily-summary-of-overbreaks.ts';
 import '@/ai/flows/cleanup-stale-users.ts';
 import '@/ai/flows/assign-user-shift.ts';
 import '@/ai/flows/cleanup-activity-logs.ts';
+import '@/ai/flows/reset-activity-data.ts';

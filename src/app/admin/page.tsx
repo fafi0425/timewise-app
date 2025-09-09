@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
 import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction } from '@/lib/firebase-admin';
 import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
-import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle, SeparatorHorizontal } from 'lucide-react';
+import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle, DatabaseZap, ServerCrash } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,9 +25,22 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { assignUserShift } from '@/ai/flows/assign-user-shift';
 import { cleanupStaleUsers } from '@/ai/flows/cleanup-stale-users';
+import { cleanupActivityLogs } from '@/ai/flows/cleanup-activity-logs';
+import { resetActivityData } from '@/ai/flows/reset-activity-data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -94,7 +107,10 @@ export default function AdminPage() {
     const [filterFromDate, setFilterFromDate] = useState('');
     const [filterToDate, setFilterToDate] = useState('');
     const [filterEmployee, setFilterEmployee] = useState('all');
-    const [isCleaning, setIsCleaning] = useState(false);
+    
+    const [isCleaningUsers, setIsCleaningUsers] = useState(false);
+    const [isCleaningLogs, setIsCleaningLogs] = useState(false);
+    const [isResettingData, setIsResettingData] = useState(false);
 
     // State for timesheet viewer
     const [selectedTimesheetUser, setSelectedTimesheetUser] = useState<string>('');
@@ -157,8 +173,6 @@ export default function AdminPage() {
     
     useEffect(() => {
         refreshData();
-        const interval = setInterval(refreshData, 30000); // Poll every 30 seconds
-        return () => clearInterval(interval);
     }, [refreshData]);
 
 
@@ -244,13 +258,6 @@ export default function AdminPage() {
             return;
         }
 
-        const originalUsers = [...users];
-        
-        // Optimistic update
-        const updatedUsers = users.map(u => 
-            u.uid === selectedUserForShift.uid ? { ...u, shift: selectedShift as Shift } : u
-        );
-        setUsers(updatedUsers);
         setIsShiftModalOpen(false);
         
         try {
@@ -258,15 +265,11 @@ export default function AdminPage() {
 
             if (result.success) {
                 toast({ title: "Success", description: result.message });
-                // The optimistic update is already applied. No full refresh needed.
+                refreshData();
             } else {
-                // Revert on failure
-                setUsers(originalUsers);
                 toast({ title: "Error", description: result.message, variant: "destructive" });
             }
         } catch (error) {
-            // Revert on error
-            setUsers(originalUsers);
             toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
         }
         
@@ -366,7 +369,7 @@ export default function AdminPage() {
     };
 
     const handleCleanupUsers = async () => {
-        setIsCleaning(true);
+        setIsCleaningUsers(true);
         const result = await cleanupStaleUsers({});
         toast({
             title: result.success ? "Cleanup Complete" : "Cleanup Failed",
@@ -376,8 +379,36 @@ export default function AdminPage() {
         if (result.success && result.cleanedUserIds && result.cleanedUserIds.length > 0) {
             refreshData();
         }
-        setIsCleaning(false);
+        setIsCleaningUsers(false);
     };
+
+    const handleCleanupLogs = async () => {
+        setIsCleaningLogs(true);
+        const result = await cleanupActivityLogs({ daysOld: 90 });
+        toast({
+            title: result.success ? "Cleanup Complete" : "Cleanup Failed",
+            description: result.message,
+            variant: result.success ? "default" : "destructive"
+        });
+        if (result.success) {
+            refreshData();
+        }
+        setIsCleaningLogs(false);
+    }
+    
+    const handleResetData = async () => {
+        setIsResettingData(true);
+        const result = await resetActivityData({});
+         toast({
+            title: result.success ? "Reset Complete" : "Reset Failed",
+            description: result.message,
+            variant: result.success ? "default" : "destructive"
+        });
+        if (result.success) {
+            refreshData();
+        }
+        setIsResettingData(false);
+    }
 
     const handleFetchTimesheet = async () => {
         const user = users.find(u => u.uid === selectedTimesheetUser);
@@ -588,13 +619,9 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-1 gap-6 mb-8">
                  <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                    <div className="flex justify-between items-center mb-6">
+                    <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
                      <CardTitle className="text-xl font-semibold text-card-foreground font-headline">User Management</CardTitle>
-                     <Button variant="secondary" onClick={handleCleanupUsers} disabled={isCleaning}>
-                         {isCleaning ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                         Cleanup Users
-                     </Button>
-                    </div>
+                    </CardHeader>
                      <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
                         <div>
                             <h4 className="font-medium text-card-foreground mb-4">Add New User</h4>
@@ -627,6 +654,10 @@ export default function AdminPage() {
                                         {Object.entries(SHIFTS).map(([key, {name}]) => (
                                             <SelectItem key={key} value={key}>{name}</SelectItem>
                                         ))}
+                                         <Separator className="my-2" />
+                                        <SelectItem value="unpaid_leave">Unpaid Leave</SelectItem>
+                                        <SelectItem value="sick_leave">Sick Leave</SelectItem>
+                                        <SelectItem value="vacation_leave">Vacation Leave</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Input value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} type="password" placeholder="Password" required />
@@ -657,7 +688,11 @@ export default function AdminPage() {
                                                 <div className="text-xs text-muted-foreground mt-1 space-x-1">
                                                     <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
                                                     <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
-                                                    {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && <span className="bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full text-xs">{SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none'>]?.name}</span>}
+                                                     {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && 
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs ${user.shift.includes('leave') ? 'bg-pantone-blue-2 text-white' : 'bg-accent/80 text-accent-foreground'}`}>
+                                                            {SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none' | 'unpaid_leave' | 'sick_leave' | 'vacation_leave'>]?.name || user.shift.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                        </span>
+                                                     }
                                                 </div>
                                            </div>
                                        </div>
@@ -711,7 +746,9 @@ export default function AdminPage() {
             <div className="grid lg:grid-cols-2 gap-6 mb-8">
                  <DailySummaryCard activityLogs={allActivity} />
                  <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                    <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Recent Activity Log</CardTitle>
+                    <CardHeader className="!p-0 !pb-6">
+                        <CardTitle className="text-xl font-semibold text-card-foreground font-headline">Recent Activity Log</CardTitle>
+                    </CardHeader>
                      <ScrollArea className="h-80 pr-4">
                         <div className="space-y-3">
                             {allActivity.slice(0, 20).map((a, index) => (
@@ -726,6 +763,50 @@ export default function AdminPage() {
                     </ScrollArea>
                 </Card>
             </div>
+            
+            <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
+                 <CardHeader className="!p-0 !pb-6">
+                    <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
+                        <ServerCrash className="mr-2 h-5 w-5 text-destructive" /> System Maintenance
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="!p-0">
+                    <p className="text-muted-foreground mb-4">
+                        Use these actions for system cleanup and maintenance. These are destructive operations and cannot be undone.
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                        <Button variant="outline" onClick={handleCleanupUsers} disabled={isCleaningUsers}>
+                            {isCleaningUsers ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                            Cleanup Stale Users
+                        </Button>
+                         <Button variant="outline" onClick={handleCleanupLogs} disabled={isCleaningLogs}>
+                            {isCleaningLogs ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Cleanup Old Logs (90d)
+                        </Button>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isResettingData}>
+                                     {isResettingData ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-2 h-4 w-4" />}
+                                     Reset All Activity Data
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete all activity logs and overbreak alerts from the database.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleResetData}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                </CardContent>
+            </Card>
 
 
             
