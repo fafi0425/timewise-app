@@ -34,8 +34,6 @@ import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { processTimesheetData } from '@/lib/timesheet-processor';
-import { onSnapshot, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -73,7 +71,6 @@ export default function AdminPage() {
     const [stats, setStats] = useState({ totalEmployees: 0, totalActivities: 0, todayBreaks: 0, todayLunches: 0 });
     const [users, setUsers] = useState<User[]>([]);
     const [userStates, setUserStates] = useState<Record<string, UserState>>({});
-    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
     const [overbreaks, setOverbreaks] = useState<ActivityLog[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
@@ -113,10 +110,11 @@ export default function AdminPage() {
     const refreshData = useCallback(async () => {
         setIsLoadingData(true);
         try {
-            const [usersResult, activityResult, overbreaksResult] = await Promise.all([
+            const [usersResult, activityResult, overbreaksResult, statesResult] = await Promise.all([
                 getAllUsersAction(),
                 getAllActivityAction(),
                 getOverbreaksAction(),
+                getAllUsersAction().then(res => res.success && res.users ? getUserStates(res.users.map(u => u.uid)) : {success: false, states: {}})
             ]);
 
             if (usersResult.success && usersResult.users) {
@@ -151,43 +149,24 @@ export default function AdminPage() {
                 setOverbreaks([]);
             }
 
+            if (statesResult.success && statesResult.states) {
+                setUserStates(statesResult.states);
+            } else {
+                setUserStates({});
+            }
+
         } catch (error: any) {
              toast({ title: "Error refreshing data", description: error.message, variant: "destructive" });
         } finally {
             setIsLoadingData(false);
-            setIsLoadingUsers(false);
         }
     }, [toast]);
     
-    // Initial data fetch and real-time listener setup
     useEffect(() => {
         refreshData();
-        
-        // Real-time listener for user states
-        const unsubscribe = onSnapshot(collection(db, 'userStates'), (snapshot) => {
-            const states: Record<string, UserState> = {};
-            snapshot.forEach(doc => {
-                states[doc.id] = doc.data() as UserState;
-            });
-            setUserStates(states);
-        }, (error) => {
-            console.error("Error listening to user states:", error);
-            toast({ title: "Real-time Error", description: "Could not connect to live status updates.", variant: "destructive" });
-        });
-
-        // Polling for overbreaks as they are less frequent
-        const overbreaksInterval = setInterval(async () => {
-             const overbreaksResult = await getOverbreaksAction();
-             if (overbreaksResult.success && overbreaksResult.overbreaks) {
-                setOverbreaks(overbreaksResult.overbreaks);
-             }
-        }, 30000);
-
-        return () => {
-            unsubscribe();
-            clearInterval(overbreaksInterval);
-        };
-    }, [refreshData, toast]);
+        const interval = setInterval(refreshData, 30000); // Poll every 30 seconds
+        return () => clearInterval(interval);
+    }, [refreshData]);
 
 
     const handleAddUser = async (e: React.FormEvent) => {
@@ -437,8 +416,6 @@ export default function AdminPage() {
             const shift = user.shift || 'none';
             let shiftDetails = {};
             if (shift === 'custom') {
-                // For admin view, we don't have local storage, this is a limitation.
-                // We'll have to rely on a default or enhance this later if custom shifts are per-user.
                 shiftDetails = { shiftStart: "09:00", shiftEnd: "17:00" };
             }
 
@@ -666,7 +643,7 @@ export default function AdminPage() {
                          <div>
                             <h4 className="font-medium text-card-foreground mb-4">Registered Users</h4>
                             <ScrollArea className="h-72 pr-4">
-                            {isLoadingUsers ? (
+                            {users.length === 0 ? (
                                 <div className="flex justify-center items-center h-full">
                                     <LoaderCircle className="animate-spin text-primary" />
                                 </div>

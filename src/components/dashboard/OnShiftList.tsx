@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
@@ -38,14 +37,13 @@ const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
 };
 
 export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) {
-    const { user: currentUser } = useAuth();
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
     const updateOnShiftList = useCallback(() => {
-        if (!currentUser || !allUsers || allUsers.length === 0) {
-            setIsLoading(allUsers ? allUsers.length === 0 : true);
+        if (!allUsers || allUsers.length === 0) {
+            setIsLoading(true);
             return;
         }
         setIsLoading(false);
@@ -86,7 +84,7 @@ export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) 
 
         setOnShiftUsers(rosterUsers);
 
-    }, [currentUser, allUsers, userStates]);
+    }, [allUsers, userStates]);
 
      useEffect(() => {
         updateOnShiftList();

@@ -11,28 +11,8 @@ import {
   doc,
   setDoc,
   getDoc,
-  onSnapshot
 } from 'firebase/firestore';
-
-const logTimesheetEvent = async (user: User, action: TimesheetAction) => {
-    if (!user) {
-        console.error("User not authenticated, cannot log timesheet event.");
-        return;
-    }
-    const newEntry: Omit<TimesheetEntry, 'id'> = {
-      uid: user.uid,
-      employeeName: user.name,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      action,
-      timestamp: Date.now()
-    };
-    await addDoc(collection(db, 'timesheet'), newEntry);
-}
-
-const logOverbreak = async (logData: Omit<ActivityLog, 'id'>) => {
-    await addDoc(collection(db, 'overbreaks'), logData);
-};
+import { getUserState, updateUserStateInFirestore, logActivity as logActivityServer, logTimesheetEvent as logTimesheetEventServer, logOverbreak as logOverbreakServer } from '@/lib/firebase-server-actions';
 
 export default function useTimeTracker() {
   const { user } = useAuth();
@@ -53,84 +33,36 @@ export default function useTimeTracker() {
     isDanger: false,
   });
 
-  const logActivity = useCallback(async (action: ActivityLog['action'], duration: number | null = null): Promise<Omit<ActivityLog, 'id'>> => {
-    if (!user) {
-        console.error("User not authenticated, cannot log activity.");
-        throw new Error("User not found for logging activity");
-    }
-
-    const newLog: Omit<ActivityLog, 'id'> = {
-      uid: user.uid,
-      employeeName: user.name,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      action,
-      duration,
-      timestamp: Date.now()
-    };
-    
-    await addDoc(collection(db, 'activity'), newLog);
-    return newLog;
-
-  }, [user]);
-  
-  const updateUserStateInFirestore = useCallback(async (newState: UserState) => {
+  const fetchUserState = useCallback(async () => {
     if (user) {
-      const stateDocRef = doc(db, 'userStates', user.uid);
-      await setDoc(stateDocRef, newState, { merge: true });
+      const state = await getUserState(user.uid);
+      if (state) {
+        setStatus(state);
+      }
     }
   }, [user]);
-
 
   useEffect(() => {
-    if (!user) return;
-    
-    const stateDocRef = doc(db, 'userStates', user.uid);
-    
-    const unsubscribe = onSnapshot(stateDocRef, (stateDocSnap) => {
-        if (stateDocSnap.exists()) {
-            setStatus(stateDocSnap.data() as UserState);
-        } else {
-             const defaultState: UserState = {
-                currentState: 'clocked_out',
-                isClockedIn: false,
-                breakStartTime: null,
-                lunchStartTime: null,
-                totalBreakMinutes: 0,
-                totalLunchMinutes: 0,
-             };
-             setStatus(defaultState);
-             setDoc(stateDocRef, defaultState);
-        }
-    }, (error) => {
-        console.error("Error in user state listener:", error);
-    });
+    fetchUserState();
+  }, [fetchUserState]);
 
-    return () => unsubscribe();
-
-  }, [user]);
-
-  const clockIn = useCallback(() => {
+  const clockIn = useCallback(async () => {
     if (!user) return;
 
-    // Optimistic update
     const newState: UserState = {...status, isClockedIn: true, currentState: 'working'};
-    setStatus(newState);
-    
+    setStatus(newState); // Optimistic update
     toast({ title: "Clocked In", description: "Your work session has started." });
 
-    // Background tasks
-    logTimesheetEvent(user, 'Clock In');
-    updateUserStateInFirestore(newState);
-  }, [user, status, toast, updateUserStateInFirestore]);
+    await logTimesheetEventServer(user, 'Clock In');
+    await updateUserStateInFirestore(user.uid, newState);
+  }, [user, status, toast]);
 
-  const clockOut = useCallback(() => {
+  const clockOut = useCallback(async () => {
     if (!user) return;
     if (status.currentState === 'break' || status.currentState === 'lunch') {
         toast({ title: "Action Required", description: "Please end your break/lunch before clocking out.", variant: "destructive" });
         return;
     }
-    // Optimistic update
     const clockedOutState: UserState = {
         currentState: 'clocked_out',
         isClockedIn: false,
@@ -139,33 +71,32 @@ export default function useTimeTracker() {
         totalBreakMinutes: 0,
         totalLunchMinutes: 0,
     };
-    setStatus(clockedOutState);
-    
+    setStatus(clockedOutState); // Optimistic update
     toast({ title: "Clocked Out", description: "Your work session has ended." });
-    
-    // Background tasks
-    logTimesheetEvent(user, 'Clock Out');
-    updateUserStateInFirestore(clockedOutState);
-  }, [user, toast, status.currentState, updateUserStateInFirestore]);
+
+    await logTimesheetEventServer(user, 'Clock Out');
+    await updateUserStateInFirestore(user.uid, clockedOutState);
+  }, [user, toast, status.currentState]);
 
 
-  const startAction = useCallback((type: 'break' | 'lunch') => {
+  const startAction = useCallback(async (type: 'break' | 'lunch') => {
+    if (!user) return;
     const now = new Date().toISOString();
     let newState: UserState;
 
     if (type === 'break') {
       newState = {...status, currentState: 'break', breakStartTime: now};
-      setStatus(newState);
-      logActivity('Break Out');
+      setStatus(newState); // Optimistic update
+      await logActivityServer(user, 'Break Out');
     } else {
       newState = {...status, currentState: 'lunch', lunchStartTime: now};
-      setStatus(newState);
-      logActivity('Lunch Out');
+      setStatus(newState); // Optimistic update
+      await logActivityServer(user, 'Lunch Out');
     }
     
-    updateUserStateInFirestore(newState);
+    await updateUserStateInFirestore(user.uid, newState);
 
-  }, [status, logActivity, updateUserStateInFirestore]);
+  }, [status, user]);
 
   const endAction = useCallback(async (type: 'break' | 'lunch') => {
     if (!user) return;
@@ -184,7 +115,7 @@ export default function useTimeTracker() {
         actionText = 'Lunch In';
         timeLimit = 60;
     } else {
-        return;
+        return; // Should not happen if UI is disabled correctly
     }
 
     duration = Math.round((new Date().getTime() - (startTime?.getTime() ?? 0)) / 60000);
@@ -209,15 +140,17 @@ export default function useTimeTracker() {
     setStatus(newState);
 
     // Background logging and state sync
-    const logData = await logActivity(actionText, duration);
+    const logData = await logActivityServer(user, actionText, duration);
     if (duration > timeLimit) {
         toast({ title: "Warning", description: `${actionText.replace(' In', '')} exceeded by ${duration - timeLimit} minutes!`, variant: "destructive" });
-        await logOverbreak(logData);
+        if (logData) {
+            await logOverbreakServer(logData);
+        }
     }
     
-    await updateUserStateInFirestore(newState);
+    await updateUserStateInFirestore(user.uid, newState);
 
-  }, [status, user, toast, logActivity, updateUserStateInFirestore]);
+  }, [status, user, toast]);
 
 
   useEffect(() => {

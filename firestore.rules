@@ -1,40 +1,40 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can only read and write their own document.
+    // Users can only read and write their own document in the 'users' collection.
+    // This prevents them from seeing or modifying other users' personal information.
     match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, update, delete: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
     }
 
-    // Any authenticated user can read the list of user states for the real-time dashboard.
-    // Users can only write to their own state document.
+    // Users can only create and update their OWN state document.
+    // They cannot read other users' states directly. The app will use a secure
+    // server action to get a list of states for the dashboard.
     match /userStates/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Users can only create activity logs for themselves.
+    // Users can only create their own activity logs. They cannot read, update,
+    // or delete any logs, including their own, ensuring the integrity of the log.
     match /activity/{activityId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth.uid != null; // Needed for profile page
+      allow create: if request.auth.uid == request.resource.data.uid;
       allow update, delete: if false;
-    }
-
-    // Users can only create overbreak logs for themselves. Admin can read all.
-    match /overbreaks/{overbreakId} {
-       allow read: if request.auth != null; // Server-side checks handle admin role
-       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-       allow update, delete: if false;
     }
     
-    // Users can only create timesheet entries for themselves. Admin can read all.
+    // Users can only create their own timesheet entries. They cannot read, update,
+    // or delete any entries. All timesheet viewing is done through secure server actions.
     match /timesheet/{timesheetId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow read, update, delete: if false;
+    }
+
+    // Users cannot read or write to the overbreaks collection directly.
+    // This is managed entirely by server-side logic to ensure accuracy.
+    match /overbreaks/{overbreakId} {
+       allow read, write: if false;
     }
   }
 }

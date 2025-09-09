@@ -3,47 +3,7 @@
 import 'server-only';
 import admin from 'firebase-admin';
 import type { User, ActivityLog, Shift, TimesheetEntry, UserState } from './types';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
-import { z } from 'zod';
-import { ai } from '@/ai/genkit';
-import { dotprompt } from '@genkit-ai/dotprompt';
-import path from 'path';
-import fs from 'fs';
-
-let app: admin.app.App;
-
-const initializeAdmin = () => {
-    if (admin.apps.length > 0) {
-        return admin.app();
-    }
-    
-    try {
-        const serviceAccount = {
-            projectId: process.env.PROJECT_ID,
-            clientEmail: process.env.CLIENT_EMAIL,
-            privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        };
-        app = admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-        });
-        return app;
-    } catch (error: any) {
-        console.error("Firebase Admin SDK initialization error:", error.message);
-        throw new Error("Failed to initialize Firebase Admin SDK: " + error.message);
-    }
-};
-
-const getDb = () => {
-    initializeAdmin();
-    return getFirestore();
-};
-
-const getAdminAuth = () => {
-    initializeAdmin();
-    return getAuth();
-};
-
+import { getDb, getAdminAuth } from './firebase-admin-util';
 
 export async function getAllUsersAction(): Promise<{ success: boolean, message: string, users?: User[] }> {
   try {
@@ -120,31 +80,6 @@ export async function getOverbreaksAction(): Promise<{ success: boolean, message
         };
     }
 }
-
-export async function getAllTimesheetAction(): Promise<{ success: boolean, message: string, timesheet?: TimesheetEntry[] }> {
-    try {
-      const db = getDb();
-      const timesheetCol = db.collection('timesheet').orderBy('timestamp', 'desc');
-      const timesheetSnapshot = await timesheetCol.get();
-  
-      if (timesheetSnapshot.empty) {
-          return { success: true, message: 'No timesheet entries found.', timesheet: [] };
-      }
-  
-      const timesheetList = timesheetSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimesheetEntry));
-  
-      return { success: true, message: 'Timesheet entries retrieved.', timesheet: timesheetList };
-    } catch (error) {
-       const errorMessage =
-        error instanceof Error ? error.message : 'An unknown error occurred';
-      console.error("Error fetching timesheet with Admin SDK:", errorMessage);
-      return {
-        success: false,
-        message: `Failed to retrieve timesheet entries: ${errorMessage}`,
-        timesheet: [],
-      };
-    }
-  }
 
 export async function getTimesheetForUserByMonth(uid: string, year: number, month: number): Promise<{ success: boolean, message: string, timesheet?: TimesheetEntry[] }> {
     try {
@@ -269,12 +204,16 @@ export async function getUserStates(uids: string[]): Promise<{ success: boolean;
   }
   try {
     const db = getDb();
-    const statesQuery = db.collection('userStates').where(admin.firestore.FieldPath.documentId(), 'in', uids);
-    const statesSnapshot = await statesQuery.get();
-    const states = statesSnapshot.docs.reduce((acc, doc) => {
-      acc[doc.id] = doc.data() as UserState;
+    const statesQuery = uids.map(uid => db.collection('userStates').doc(uid));
+    const statesSnapshot = await db.getAll(...statesQuery);
+    
+    const states = statesSnapshot.reduce((acc, doc) => {
+      if (doc.exists) {
+        acc[doc.id] = doc.data() as UserState;
+      }
       return acc;
     }, {} as Record<string, UserState>);
+    
     return { success: true, states };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

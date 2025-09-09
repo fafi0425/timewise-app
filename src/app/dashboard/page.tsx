@@ -15,10 +15,8 @@ import { Button } from '@/components/ui/button';
 import { BarChart2, Clock } from 'lucide-react';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import { Card, CardContent } from '@/components/ui/card';
-import { getAllUsersAction } from '@/lib/firebase-admin';
+import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
 import type { User, UserState } from '@/lib/types';
-import { onSnapshot, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardPage() {
@@ -29,30 +27,25 @@ export default function DashboardPage() {
   const [userStates, setUserStates] = useState<Record<string, UserState>>({});
   const { toast } = useToast();
 
-  const fetchUsers = useCallback(async () => {
+  const fetchDashboardData = useCallback(async () => {
     const usersResult = await getAllUsersAction();
     if (usersResult.success && usersResult.users) {
         setAllUsers(usersResult.users);
+        const uids = usersResult.users.map(u => u.uid);
+        const statesResult = await getUserStates(uids);
+        if(statesResult.success && statesResult.states) {
+          setUserStates(statesResult.states);
+        }
+    } else {
+       toast({ title: "Error", description: "Could not load user data.", variant: "destructive" });
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
-    fetchUsers();
-
-    // Real-time listener for user states
-    const unsubscribe = onSnapshot(collection(db, 'userStates'), (snapshot) => {
-        const states: Record<string, UserState> = {};
-        snapshot.forEach(doc => {
-            states[doc.id] = doc.data() as UserState;
-        });
-        setUserStates(states);
-    }, (error) => {
-        console.error("Error listening to user states:", error);
-        toast({ title: "Real-time Error", description: "Could not connect to live status updates.", variant: "destructive" });
-    });
-
-    return () => unsubscribe();
-  }, [fetchUsers, toast]);
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000); // Poll every 30 seconds
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
 
   return (
     <AuthCheck>
