@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coffee, Utensils } from 'lucide-react';
-import type { User } from '@/lib/types';
+import type { User, ActivityLog } from '@/lib/types';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getAllUsersAction } from '@/lib/firebase-admin';
