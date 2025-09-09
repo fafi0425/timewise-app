@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import useTimeTracker from '@/hooks/useTimeTracker';
 import AppHeader from '@/components/shared/AppHeader';
@@ -15,11 +15,33 @@ import { Button } from '@/components/ui/button';
 import { BarChart2, Clock } from 'lucide-react';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import { Card, CardContent } from '@/components/ui/card';
+import type { User, UserState } from '@/lib/types';
+import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { status, summary, countdown, startAction, endAction, clockIn, clockOut } = useTimeTracker();
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [userStates, setUserStates] = useState<Record<string, UserState>>({});
+
+  const fetchUsers = useCallback(async () => {
+    const usersResult = await getAllUsersAction();
+    if (usersResult.success && usersResult.users) {
+      setAllUsers(usersResult.users);
+      const userIds = usersResult.users.map(u => u.uid);
+      const statesResult = await getUserStates(userIds);
+      if (statesResult.success && statesResult.states) {
+        setUserStates(statesResult.states);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+    const interval = setInterval(fetchUsers, 30000); // Poll for updates
+    return () => clearInterval(interval);
+  }, [fetchUsers]);
 
   return (
     <AuthCheck>
@@ -85,7 +107,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-8">
                 <TeamOverbreakAlerts />
-                <OnShiftList simpleStatus={true} />
+                <OnShiftList allUsers={allUsers} userStates={userStates} />
             </div>
           </div>
           

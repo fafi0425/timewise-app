@@ -44,8 +44,8 @@ export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) 
     const [isLoading, setIsLoading] = useState(true);
 
     const updateOnShiftList = useCallback(() => {
-        if (!currentUser || allUsers.length === 0) {
-            setIsLoading(allUsers.length === 0);
+        if (!currentUser || !allUsers || allUsers.length === 0) {
+            setIsLoading(!allUsers || allUsers.length === 0);
             return;
         }
 
