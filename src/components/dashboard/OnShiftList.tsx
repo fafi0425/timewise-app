@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { getUserStates } from '@/lib/firebase-admin';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
@@ -43,28 +42,34 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
-     useEffect(() => {
+    const fetchUserStates = useCallback(async () => {
+        if (!allUsers || allUsers.length === 0) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
-        const q = query(collection(db, "userStates"));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const states: Record<string, UserState> = {};
-            querySnapshot.forEach((doc) => {
-                states[doc.id] = doc.data() as UserState;
-            });
-            setUserStates(states);
-            setIsLoading(false);
-        }, (error) => {
-            console.error("Error connecting to live status updates:", error);
-            setIsLoading(false);
+        const uids = allUsers.map(u => u.uid);
+        const result = await getUserStates(uids);
+        if (result.success && result.states) {
+            setUserStates(result.states);
+        } else {
+            console.error("Could not fetch user states:", result.message);
             setTitle("Could not connect to live status");
-        });
+        }
+        setIsLoading(false);
+    }, [allUsers]);
 
-        return () => unsubscribe();
-    }, []);
+    useEffect(() => {
+        fetchUserStates();
+        const interval = setInterval(fetchUserStates, 30000); // Poll for new states
+        return () => clearInterval(interval);
+    }, [fetchUserStates]);
+
 
     const updateOnShiftList = useCallback(() => {
-        if (!allUsers || allUsers.length === 0 || Object.keys(userStates).length === 0) {
-            return;
+        if (!allUsers) {
+             setOnShiftUsers([]);
+             return;
         }
 
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
@@ -148,7 +153,7 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
             <CardContent>
                 <ScrollArea className="h-72">
                     <div className="space-y-3">
-                        {isLoading ? (
+                        {isLoading && onShiftUsers.length === 0 ? (
                             <div className="flex justify-center items-center h-full py-10">
                                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                             </div>

@@ -1,42 +1,50 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is the owner of the document.
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the requesting user is the owner of the document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // Users can only read/write their own user document.
-    // Admins have full access through server-side actions, not these rules.
+    // Users can read their own profile
     match /users/{userId} {
-      allow read, update: if isOwner(userId);
-      allow create: if request.auth != null;
+      allow read: if isSignedIn() && isOwner(userId);
+      // All writes are handled by secure server-side functions
+      allow write: if false; 
     }
-
-    // A user can only create, read, or write their own state document.
+    
     match /userStates/{userId} {
-      // Allow any authenticated user to read all states for the real-time dashboard.
-      allow get, list: if request.auth != null;
-      allow create, update, delete: if isOwner(userId);
+        // Users can only read and write to their OWN state document
+        allow read, write: if isSignedIn() && isOwner(userId);
     }
     
-    // Activity logs are created by server actions. No client access.
-    match /activity/{logId} {
-      allow read, write: if false;
+    // Activity, Overbreaks, and Timesheet are write-only from the client.
+    // Client logs its own actions, but cannot read any logs.
+    // All reading of these collections is done via secure server actions.
+    match /activity/{docId} {
+      allow read: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
-    // Timesheet entries are created by server actions.
-    // Allow users to read their own entries for the timesheet page.
-    match /timesheet/{entryId} {
-      allow read: if request.auth.uid == resource.data.uid;
-      allow create, update, delete: if false;
+    match /overbreaks/{docId} {
+      allow read: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
     
-    // Overbreaks are created by server actions. No client access.
-    match /overbreaks/{overbreakId} {
-       allow read, write: if false;
+    match /timesheet/{docId} {
+      allow read: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
   }
 }
