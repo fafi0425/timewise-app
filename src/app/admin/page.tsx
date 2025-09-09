@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction } from '@/lib/firebase-admin';
-import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
+import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction, getUserStates } from '@/lib/firebase-admin';
+import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry, UserState } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
@@ -70,6 +70,7 @@ const StatCard = ({ title, value, icon }: { title: string; value: string | numbe
 export default function AdminPage() {
     const [stats, setStats] = useState({ totalEmployees: 0, totalActivities: 0, todayBreaks: 0, todayLunches: 0 });
     const [users, setUsers] = useState<User[]>([]);
+    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
     const [overbreaks, setOverbreaks] = useState<ActivityLog[]>([]);
@@ -118,6 +119,11 @@ export default function AdminPage() {
 
             if (usersResult.success && usersResult.users) {
                 setUsers(usersResult.users);
+                const userIds = usersResult.users.map(u => u.uid);
+                const statesResult = await getUserStates(userIds);
+                if (statesResult.success && statesResult.states) {
+                    setUserStates(statesResult.states);
+                }
             } else {
                 toast({ title: "Error Fetching Users", description: usersResult.message, variant: "destructive" });
                 setUsers([]);
@@ -159,6 +165,8 @@ export default function AdminPage() {
 
     useEffect(() => {
         refreshData();
+        const intervalId = setInterval(refreshData, 30000); // Poll for updates
+        return () => clearInterval(intervalId);
     }, [refreshData]);
 
     const handleAddUser = async (e: React.FormEvent) => {
@@ -462,7 +470,7 @@ export default function AdminPage() {
                     <ShiftManager />
                 </div>
                 <div className="lg:col-span-2">
-                     <OnShiftList simpleStatus={true} />
+                     <OnShiftList allUsers={users} userStates={userStates} />
                 </div>
             </div>
 

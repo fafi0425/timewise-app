@@ -8,7 +8,6 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
@@ -34,34 +33,23 @@ const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
 };
 
 interface OnShiftListProps {
-  simpleStatus?: boolean;
+  allUsers: User[];
+  userStates: Record<string, UserState>;
 }
 
-export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) {
+export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) {
     const { user: currentUser } = useAuth();
-    const [allUsers, setAllUsers] = useState<User[]>([]);
-    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
-    const updateOnShiftList = useCallback(async () => {
-        if (!currentUser) return;
-        
-        // Securely fetch all data from server
-        const usersResult = await getAllUsersAction();
-        if (!usersResult.success || !usersResult.users) {
-            setIsLoading(false);
+    const updateOnShiftList = useCallback(() => {
+        if (!currentUser || allUsers.length === 0) {
+            setIsLoading(allUsers.length === 0);
             return;
         }
 
-        const allUsersData = usersResult.users;
-        setAllUsers(allUsersData);
-        
-        const userIds = allUsersData.map(u => u.uid);
-        const statesResult = await getUserStates(userIds);
-        const allUserStates = statesResult.success ? statesResult.states || {} : {};
-        setUserStates(allUserStates);
+        setIsLoading(false);
 
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
         const now = new Date();
@@ -90,17 +78,16 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         }
         setTitle(rosterTitle);
 
-        const usersInShift = allUsersData.filter(u => u.role !== 'Administrator' && u.shift && shiftsToQuery.includes(u.shift));
+        const usersInShift = allUsers.filter(u => u.role !== 'Administrator' && u.shift && shiftsToQuery.includes(u.shift));
 
         const rosterUsers = usersInShift.map(user => ({
             ...user,
-            status: getUserStatus(allUserStates[user.uid]),
+            status: getUserStatus(userStates[user.uid]),
         })).sort((a,b) => a.name.localeCompare(b.name));
 
         setOnShiftUsers(rosterUsers);
-        setIsLoading(false);
 
-    }, [currentUser]);
+    }, [currentUser, allUsers, userStates]);
 
      useEffect(() => {
         updateOnShiftList();
@@ -110,7 +97,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         };
 
         window.addEventListener('storage', handleStorageChange);
-        const intervalId = setInterval(updateOnShiftList, 30000); // Poll every 30 seconds
+        const intervalId = setInterval(updateOnShiftList, 5000); // Poll for time-based changes
 
         return () => {
             clearInterval(intervalId);
@@ -135,7 +122,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
     }
 
     return (
-        <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
+        <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl h-full">
             <CardHeader>
                 <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
                     <UsersIcon className="h-5 w-5 mr-2 text-primary" /> 
