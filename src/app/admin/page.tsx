@@ -392,6 +392,7 @@ export default function AdminPage() {
             if (!result.success) {
                 toast({ title: "Error", description: result.message, variant: 'destructive' });
                 setProcessedData([]);
+                setIsTimesheetLoading(false);
                 return;
             }
             
@@ -400,6 +401,7 @@ export default function AdminPage() {
             if (rawEntries.length === 0) {
                 toast({ title: "No Data", description: `No timesheet entries found for ${user.name} for the selected month.` });
                 setProcessedData([]);
+                setIsTimesheetLoading(false);
                 return;
             }
             
@@ -767,7 +769,7 @@ export default function AdminPage() {
                   <DialogDescription>
                     Update the user's details below.
                   </DialogDescription>
-                </Header>
+                </DialogHeader>
                 {editingUser && (
                 <div className="py-4 space-y-4">
                     <div>
@@ -863,5 +865,3 @@ export default function AdminPage() {
     </AuthCheck>
     );
 }
-
-    
