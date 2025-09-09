@@ -9,7 +9,7 @@ export async function getUserState(uid: string): Promise<UserState | null> {
   const db = getDb();
   const stateDocRef = db.collection('userStates').doc(uid);
   const stateDocSnap = await stateDocRef.get();
-  if (stateDocSnap.exists()) {
+  if (stateDocSnap.exists) {
     return stateDocSnap.data() as UserState;
   }
   return null;
