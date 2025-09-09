@@ -8,11 +8,6 @@ import { db } from '@/lib/firebase';
 import { 
   collection, 
   addDoc, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy, 
-  limit,
   doc,
   setDoc,
   getDoc,
@@ -156,59 +151,45 @@ export default function useTimeTracker() {
     if (!user) return;
 
     let duration = 0;
-    let startTime = null;
+    let startTime: Date | null = null;
     let actionText: 'Break In' | 'Lunch In';
     let timeLimit = 0;
-    let stateUpdate: Partial<UserState>;
-
+    
     if (type === 'break' && status.breakStartTime) {
         startTime = new Date(status.breakStartTime);
         actionText = 'Break In';
         timeLimit = 15;
-        stateUpdate = { 
-            currentState: 'working',
-            breakStartTime: null,
-        };
     } else if (type === 'lunch' && status.lunchStartTime) {
         startTime = new Date(status.lunchStartTime);
         actionText = 'Lunch In';
         timeLimit = 60;
-        stateUpdate = {
-            currentState: 'working',
-            lunchStartTime: null,
-        };
     } else {
-        return; // No start time found, can't end action
+        return;
     }
 
-    if(startTime) {
-        duration = Math.round((new Date().getTime() - startTime.getTime()) / 60000);
-    }
-    
-    // Log the event regardless of overbreak
+    duration = Math.round((new Date().getTime() - (startTime?.getTime() ?? 0)) / 60000);
     const logData = await logActivity(actionText, duration);
 
-    // Check for overbreak and log if necessary
     if (duration > timeLimit) {
         toast({ title: "Warning", description: `${actionText.replace(' In', '')} exceeded by ${duration - timeLimit} minutes!`, variant: "destructive" });
         await logOverbreak(logData);
     }
     
-    // Update state to return to working
-    if(type === 'break'){
+    if (type === 'break') {
          setStatus(prev => ({
             ...prev,
-            ...stateUpdate,
+            currentState: 'working',
+            breakStartTime: null,
             totalBreakMinutes: prev.totalBreakMinutes + duration
         }));
     } else {
          setStatus(prev => ({
             ...prev,
-            ...stateUpdate,
+            currentState: 'working',
+            lunchStartTime: null,
             totalLunchMinutes: prev.totalLunchMinutes + duration
         }));
     }
-    
   }, [status, user, toast, logActivity]);
 
 

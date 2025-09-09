@@ -1,36 +1,40 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // Users can only read/write their own data.
+    // Private user profiles
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null && request.auth.uid == userId; // Allow users to delete their own account data
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
     }
-
-    // A user can only manage their own state.
+    
+    // User state, readable by all for dashboard, but only writable by the owner
     match /userStates/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth.uid != null;
+      allow write: if request.auth.uid == userId;
     }
     
-    // Activity logs can be created by the user they belong to. No one can read/update them from the client.
+    // Activity logs are write-only for clients, readable by server
     match /activity/{logId} {
-      allow read, update, delete: if false; // Only backend can read/manage
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if false; 
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow update, delete: if false;
     }
     
-    // Timesheet entries can be created by the user they belong to. No one can read/update them from the client.
-    match /timesheet/{entryId} {
-       allow read, update, delete: if false; // Only backend can read/manage
-       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    // Overbreak logs are write-only for clients, readable by server
+    match /overbreaks/{logId} {
+      allow read: if request.auth.uid != null;
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow update, delete: if false;
     }
 
-    // Overbreak logs can be created by the user they belong to. No one can read/update them from the client.
-    match /overbreaks/{overbreakId} {
-      allow read, update, delete: if false; // Only backend can read/manage
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    // Timesheet entries are write-only for clients, readable by server
+    match /timesheet/{entryId} {
+      allow read: if request.auth.uid == resource.data.uid;
+      allow create: if request.auth.uid == request.resource.data.uid;
+      allow update, delete: if false;
     }
   }
 }
