@@ -8,10 +8,14 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
+}
+
+interface OnShiftListProps {
+    allUsers: User[];
+    userStates: Record<string, UserState>;
 }
 
 const getOverlappingShift = (hour: number): Shift | null => {
@@ -33,46 +37,18 @@ const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
     return 'Logged Out';
 };
 
-export default function OnShiftList() {
+export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) {
     const { user: currentUser } = useAuth();
-    const [allUsers, setAllUsers] = useState<User[]>([]);
-    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const usersResult = await getAllUsersAction();
-            let users: User[] = [];
-            if (usersResult.success && usersResult.users) {
-                users = usersResult.users;
-                setAllUsers(users);
-            }
-            
-            const uids = users.map(u => u.uid);
-            const statesResult = await getUserStates(uids);
-            if (statesResult.success && statesResult.states) {
-                setUserStates(statesResult.states);
-            }
-        } catch (error) {
-            console.error("Failed to fetch user data:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 30000);
-        return () => clearInterval(interval);
-    }, [fetchData]);
-
     const updateOnShiftList = useCallback(() => {
-        if (!currentUser || allUsers.length === 0) {
+        if (!currentUser || !allUsers || allUsers.length === 0) {
+            setIsLoading(allUsers ? allUsers.length === 0 : true);
             return;
         }
+        setIsLoading(false);
 
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
         const now = new Date();
@@ -120,7 +96,7 @@ export default function OnShiftList() {
         };
 
         window.addEventListener('storage', handleStorageChange);
-        const intervalId = setInterval(updateOnShiftList, 60000); // Keep polling for time-based shift changes (e.g. overlap)
+        const intervalId = setInterval(updateOnShiftList, 60000); // Poll for time-based shift changes (e.g. overlap)
 
         return () => {
             clearInterval(intervalId);

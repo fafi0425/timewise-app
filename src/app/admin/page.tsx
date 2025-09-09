@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction } from '@/lib/firebase-admin';
-import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
+import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction, getUserStates } from '@/lib/firebase-admin';
+import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry, UserState } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
@@ -34,6 +34,8 @@ import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { processTimesheetData } from '@/lib/timesheet-processor';
+import { onSnapshot, collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -70,6 +72,7 @@ const StatCard = ({ title, value, icon }: { title: string; value: string | numbe
 export default function AdminPage() {
     const [stats, setStats] = useState({ totalEmployees: 0, totalActivities: 0, todayBreaks: 0, todayLunches: 0 });
     const [users, setUsers] = useState<User[]>([]);
+    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
     const [overbreaks, setOverbreaks] = useState<ActivityLog[]>([]);
@@ -155,12 +158,37 @@ export default function AdminPage() {
             setIsLoadingUsers(false);
         }
     }, [toast]);
-
+    
+    // Initial data fetch and real-time listener setup
     useEffect(() => {
         refreshData();
-        const interval = setInterval(refreshData, 30000);
-        return () => clearInterval(interval);
-    }, [refreshData]);
+        
+        // Real-time listener for user states
+        const unsubscribe = onSnapshot(collection(db, 'userStates'), (snapshot) => {
+            const states: Record<string, UserState> = {};
+            snapshot.forEach(doc => {
+                states[doc.id] = doc.data() as UserState;
+            });
+            setUserStates(states);
+        }, (error) => {
+            console.error("Error listening to user states:", error);
+            toast({ title: "Real-time Error", description: "Could not connect to live status updates.", variant: "destructive" });
+        });
+
+        // Polling for overbreaks as they are less frequent
+        const overbreaksInterval = setInterval(async () => {
+             const overbreaksResult = await getOverbreaksAction();
+             if (overbreaksResult.success && overbreaksResult.overbreaks) {
+                setOverbreaks(overbreaksResult.overbreaks);
+             }
+        }, 30000);
+
+        return () => {
+            unsubscribe();
+            clearInterval(overbreaksInterval);
+        };
+    }, [refreshData, toast]);
+
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -463,7 +491,7 @@ export default function AdminPage() {
                     <ShiftManager />
                 </div>
                 <div className="lg:col-span-2">
-                     <OnShiftList allUsers={users} />
+                     <OnShiftList allUsers={users} userStates={userStates} />
                 </div>
             </div>
 

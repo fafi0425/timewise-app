@@ -15,11 +15,44 @@ import { Button } from '@/components/ui/button';
 import { BarChart2, Clock } from 'lucide-react';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import { Card, CardContent } from '@/components/ui/card';
+import { getAllUsersAction } from '@/lib/firebase-admin';
+import type { User, UserState } from '@/lib/types';
+import { onSnapshot, collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { status, summary, countdown, startAction, endAction, clockIn, clockOut } = useTimeTracker();
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [userStates, setUserStates] = useState<Record<string, UserState>>({});
+  const { toast } = useToast();
+
+  const fetchUsers = useCallback(async () => {
+    const usersResult = await getAllUsersAction();
+    if (usersResult.success && usersResult.users) {
+        setAllUsers(usersResult.users);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+
+    // Real-time listener for user states
+    const unsubscribe = onSnapshot(collection(db, 'userStates'), (snapshot) => {
+        const states: Record<string, UserState> = {};
+        snapshot.forEach(doc => {
+            states[doc.id] = doc.data() as UserState;
+        });
+        setUserStates(states);
+    }, (error) => {
+        console.error("Error listening to user states:", error);
+        toast({ title: "Real-time Error", description: "Could not connect to live status updates.", variant: "destructive" });
+    });
+
+    return () => unsubscribe();
+  }, [fetchUsers, toast]);
 
   return (
     <AuthCheck>
@@ -85,7 +118,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-8">
                 <TeamOverbreakAlerts />
-                <OnShiftList />
+                <OnShiftList allUsers={allUsers} userStates={userStates} />
             </div>
           </div>
           
