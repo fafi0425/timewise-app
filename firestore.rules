@@ -1,38 +1,40 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users can only manage their own user document.
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      // Allow user creation for sign-up process.
+      // Any authenticated user can create a user (for sign-up).
       allow create: if request.auth != null;
+      // Users can read/update their own data.
+      allow read, update: if request.auth != null && request.auth.uid == userId;
     }
     
-    // A user can only read and write their own real-time state document.
     match /userStates/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Any authenticated user can read user states for real-time dashboards.
+      allow read: if request.auth != null;
+      // A user can only write to their own state document.
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // A user can only create their own activity logs.
     match /activity/{activityId} {
+      // A user can only create their own activity logs.
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      // Reading activity logs for others is handled by secure server actions.
-      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+      // Activity logs are not read directly by clients.
+      allow read: if false;
     }
     
-    // Overbreaks are only read by secure server actions. No client access.
     match /overbreaks/{overbreakId} {
-       allow read: if false;
-       allow list: if false;
-       allow write: if false;
+       // Any authenticated user can read the overbreaks collection for real-time alerts.
+       allow read: if request.auth != null;
     }
     
-    // A user can only create and read their own timesheet entries.
     match /timesheet/{entryId} {
+      // A user can only create their own timesheet entries.
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+      // Timesheet data is read via secure server actions, not directly.
+      allow read: if false;
     }
   }
 }
