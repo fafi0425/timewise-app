@@ -10,7 +10,7 @@ import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
 import { getUserStates } from '@/lib/firebase-admin';
 
 interface OnShiftUser extends User {
-    status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
+    status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out' | 'Unpaid Leave' | 'Sick Leave' | 'Vacation Leave';
 }
 
 interface OnShiftListProps {
@@ -24,7 +24,11 @@ const getOverlappingShift = (hour: number): Shift | null => {
     return null;
 }
 
-const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
+const getUserStatus = (user: User, state: UserState | undefined): OnShiftUser['status'] => {
+    if (user.shift === 'unpaid_leave') return 'Unpaid Leave';
+    if (user.shift === 'sick_leave') return 'Sick Leave';
+    if (user.shift === 'vacation_leave') return 'Vacation Leave';
+    
     if (state?.isClockedIn) {
         switch (state.currentState) {
             case 'working': return 'Working';
@@ -89,7 +93,7 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
 
         const shiftToDisplay = shiftFilter || actualCurrentShift;
         const overlappingShift = getOverlappingShift(currentHour);
-        const shiftsToQuery: Shift[] = [shiftToDisplay];
+        const shiftsToQuery: Shift[] = [shiftToDisplay, 'unpaid_leave', 'sick_leave', 'vacation_leave'];
         
         let rosterTitle = `${SHIFTS[shiftToDisplay]?.name || 'Custom Shift'} Roster`;
         if (overlappingShift && !shiftFilter) {
@@ -103,7 +107,7 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
 
         const rosterUsers = usersInShift.map(user => ({
             ...user,
-            status: getUserStatus(userStates[user.uid]),
+            status: getUserStatus(user, userStates[user.uid]),
         })).sort((a,b) => a.name.localeCompare(b.name));
 
         setOnShiftUsers(rosterUsers);
@@ -130,6 +134,7 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
         if (action === 'Working') return 'secondary';
         if (action === 'On Break' || action === 'On Lunch') return 'default';
         if (action === 'Logged Out') return 'destructive';
+        if (action.includes('Leave')) return 'outline';
         return 'outline';
     };
 
@@ -168,9 +173,9 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
                                         <div className="font-medium text-card-foreground">{u.name}</div>
                                         <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                                             <span>{u.department}</span>
-                                            {u.shift && u.shift !== 'none' && (
+                                            {u.shift && !['unpaid_leave', 'sick_leave', 'vacation_leave', 'none'].includes(u.shift) && (
                                                 <Badge className={`font-normal ${getShiftBadgeVariant(u.shift)}`}>
-                                                    {SHIFTS[u.shift as Exclude<Shift, 'custom' | 'none'>]?.name || 'Custom'}
+                                                    {SHIFTS[u.shift as Exclude<Shift, 'custom' | 'none' | 'unpaid_leave' | 'sick_leave' | 'vacation_leave'>]?.name || 'Custom'}
                                                 </Badge>
                                             )}
                                         </div>
