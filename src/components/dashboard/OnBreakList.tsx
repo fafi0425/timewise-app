@@ -12,21 +12,24 @@ interface OnBreakUser extends User {
 
 export default function OnBreakList() {
   const [onBreakUsers, setOnBreakUsers] = useState<OnBreakUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchOnBreakUsers = async () => {
+      try {
+          const result = await getUsersOnBreakOrLunch();
+          if (result.success && result.users) {
+              setOnBreakUsers(result.users as OnBreakUser[]);
+          } else {
+              console.error("Could not fetch on-break users:", result.message);
+          }
+      } catch (error) {
+          console.error("Error fetching on-break users:", error);
+      } finally {
+          setIsLoading(false);
+      }
+  }
 
   useEffect(() => {
-    const fetchOnBreakUsers = async () => {
-        try {
-            const result = await getUsersOnBreakOrLunch();
-            if (result.success && result.users) {
-                setOnBreakUsers(result.users as OnBreakUser[]);
-            } else {
-                console.error("Could not fetch on-break users:", result.message);
-            }
-        } catch (error) {
-            console.error("Error fetching on-break users:", error);
-        }
-    }
-
     fetchOnBreakUsers();
     const intervalId = setInterval(fetchOnBreakUsers, 30000); // Poll every 30 seconds
 
@@ -41,7 +44,9 @@ export default function OnBreakList() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 max-h-64 overflow-y-auto">
-        {onBreakUsers.length === 0 ? (
+        {isLoading ? (
+            <p className="text-center py-4 text-muted-foreground">Loading...</p>
+        ) : onBreakUsers.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">
             <p>No team members are currently on break or lunch.</p>
           </div>

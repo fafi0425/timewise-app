@@ -8,10 +8,7 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getAllUsersAction } from '@/lib/firebase-admin';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
+import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
@@ -48,51 +45,23 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchAllUsers = useCallback(async () => {
-        setIsLoading(true);
+    const updateOnShiftList = useCallback(async () => {
+        if (!currentUser) return;
+        
+        // Securely fetch all data from server
         const usersResult = await getAllUsersAction();
-        if (usersResult.success && usersResult.users) {
-            setAllUsers(usersResult.users);
+        if (!usersResult.success || !usersResult.users) {
+            setIsLoading(false);
+            return;
         }
-        setIsLoading(false);
-    }, []);
 
-    useEffect(() => {
-        fetchAllUsers();
-    }, [fetchAllUsers]);
-
-    useEffect(() => {
-        if (allUsers.length === 0) return;
-
-        const uids = allUsers.map(u => u.uid);
-        // Firestore 'in' queries are limited to 30 items. If there are more users, we need multiple listeners.
-        const chunk = <T,>(arr: T[], size: number) => 
-            Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
-                arr.slice(i * size, i * size + size)
-            );
-
-        const uidChunks = chunk(uids, 30);
-
-        const unsubscribers = uidChunks.map(uidChunk => {
-            const q = query(collection(db, "userStates"), where("__name__", "in", uidChunk));
-            return onSnapshot(q, (snapshot) => {
-                const states: Record<string, UserState> = {};
-                snapshot.forEach(doc => {
-                    states[doc.id] = doc.data() as UserState;
-                });
-
-                setUserStates(prevStates => ({ ...prevStates, ...states }));
-            }, (error) => {
-                console.error("Error fetching real-time user states:", error);
-            });
-        });
-
-        return () => unsubscribers.forEach(unsub => unsub());
-
-    }, [allUsers]);
-
-    const updateOnShiftList = useCallback(() => {
-        if (!currentUser || allUsers.length === 0) return;
+        const allUsersData = usersResult.users;
+        setAllUsers(allUsersData);
+        
+        const userIds = allUsersData.map(u => u.uid);
+        const statesResult = await getUserStates(userIds);
+        const allUserStates = statesResult.success ? statesResult.states || {} : {};
+        setUserStates(allUserStates);
 
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
         const now = new Date();
@@ -121,16 +90,17 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         }
         setTitle(rosterTitle);
 
-        const usersInShift = allUsers.filter(u => u.role !== 'Administrator' && u.shift && shiftsToQuery.includes(u.shift));
+        const usersInShift = allUsersData.filter(u => u.role !== 'Administrator' && u.shift && shiftsToQuery.includes(u.shift));
 
         const rosterUsers = usersInShift.map(user => ({
             ...user,
-            status: getUserStatus(userStates[user.uid]),
+            status: getUserStatus(allUserStates[user.uid]),
         })).sort((a,b) => a.name.localeCompare(b.name));
 
         setOnShiftUsers(rosterUsers);
+        setIsLoading(false);
 
-    }, [currentUser, allUsers, userStates]);
+    }, [currentUser]);
 
      useEffect(() => {
         updateOnShiftList();
@@ -140,7 +110,7 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         };
 
         window.addEventListener('storage', handleStorageChange);
-        const intervalId = setInterval(updateOnShiftList, 60000); // Also refresh periodically for time-based shifts
+        const intervalId = setInterval(updateOnShiftList, 30000); // Poll every 30 seconds
 
         return () => {
             clearInterval(intervalId);
