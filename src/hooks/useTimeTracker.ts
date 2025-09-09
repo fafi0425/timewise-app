@@ -73,6 +73,14 @@ export default function useTimeTracker() {
     return newLog;
 
   }, [user]);
+  
+  const updateUserStateInFirestore = useCallback(async (newState: UserState) => {
+    if (user) {
+      const stateDocRef = doc(db, 'userStates', user.uid);
+      await setDoc(stateDocRef, newState, { merge: true });
+    }
+  }, [user]);
+
 
   useEffect(() => {
     if (!user) return;
@@ -101,20 +109,20 @@ export default function useTimeTracker() {
     return () => unsubscribe();
 
   }, [user]);
-  
-  useEffect(() => {
-    if(user) {
-        const stateDocRef = doc(db, 'userStates', user.uid);
-        setDoc(stateDocRef, status, { merge: true });
-    }
-  }, [status, user]);
 
   const clockIn = useCallback(() => {
     if (!user) return;
-    setStatus(prev => ({...prev, isClockedIn: true, currentState: 'working'}));
-    logTimesheetEvent(user, 'Clock In');
+
+    // Optimistic update
+    const newState: UserState = {...status, isClockedIn: true, currentState: 'working'};
+    setStatus(newState);
+    
     toast({ title: "Clocked In", description: "Your work session has started." });
-  }, [user, toast]);
+
+    // Background tasks
+    logTimesheetEvent(user, 'Clock In');
+    updateUserStateInFirestore(newState);
+  }, [user, status, toast, updateUserStateInFirestore]);
 
   const clockOut = useCallback(() => {
     if (!user) return;
@@ -122,6 +130,7 @@ export default function useTimeTracker() {
         toast({ title: "Action Required", description: "Please end your break/lunch before clocking out.", variant: "destructive" });
         return;
     }
+    // Optimistic update
     const clockedOutState: UserState = {
         currentState: 'clocked_out',
         isClockedIn: false,
@@ -131,21 +140,32 @@ export default function useTimeTracker() {
         totalLunchMinutes: 0,
     };
     setStatus(clockedOutState);
-    logTimesheetEvent(user, 'Clock Out');
+    
     toast({ title: "Clocked Out", description: "Your work session has ended." });
-  }, [user, toast, status.currentState]);
+    
+    // Background tasks
+    logTimesheetEvent(user, 'Clock Out');
+    updateUserStateInFirestore(clockedOutState);
+  }, [user, toast, status.currentState, updateUserStateInFirestore]);
 
 
   const startAction = useCallback((type: 'break' | 'lunch') => {
     const now = new Date().toISOString();
+    let newState: UserState;
+
     if (type === 'break') {
-      setStatus(prev => ({...prev, currentState: 'break', breakStartTime: now}));
+      newState = {...status, currentState: 'break', breakStartTime: now};
+      setStatus(newState);
       logActivity('Break Out');
     } else {
-      setStatus(prev => ({...prev, currentState: 'lunch', lunchStartTime: now}));
+      newState = {...status, currentState: 'lunch', lunchStartTime: now};
+      setStatus(newState);
       logActivity('Lunch Out');
     }
-  }, [logActivity]);
+    
+    updateUserStateInFirestore(newState);
+
+  }, [status, logActivity, updateUserStateInFirestore]);
 
   const endAction = useCallback(async (type: 'break' | 'lunch') => {
     if (!user) return;
@@ -168,29 +188,36 @@ export default function useTimeTracker() {
     }
 
     duration = Math.round((new Date().getTime() - (startTime?.getTime() ?? 0)) / 60000);
-    const logData = await logActivity(actionText, duration);
+    
+    // Optimistic UI Update first
+    let newState: UserState;
+    if (type === 'break') {
+         newState = ({
+            ...status,
+            currentState: 'working',
+            breakStartTime: null,
+            totalBreakMinutes: status.totalBreakMinutes + duration
+        });
+    } else {
+         newState = ({
+            ...status,
+            currentState: 'working',
+            lunchStartTime: null,
+            totalLunchMinutes: status.totalLunchMinutes + duration
+        });
+    }
+    setStatus(newState);
 
+    // Background logging and state sync
+    const logData = await logActivity(actionText, duration);
     if (duration > timeLimit) {
         toast({ title: "Warning", description: `${actionText.replace(' In', '')} exceeded by ${duration - timeLimit} minutes!`, variant: "destructive" });
         await logOverbreak(logData);
     }
     
-    if (type === 'break') {
-         setStatus(prev => ({
-            ...prev,
-            currentState: 'working',
-            breakStartTime: null,
-            totalBreakMinutes: prev.totalBreakMinutes + duration
-        }));
-    } else {
-         setStatus(prev => ({
-            ...prev,
-            currentState: 'working',
-            lunchStartTime: null,
-            totalLunchMinutes: prev.totalLunchMinutes + duration
-        }));
-    }
-  }, [status, user, toast, logActivity]);
+    await updateUserStateInFirestore(newState);
+
+  }, [status, user, toast, logActivity, updateUserStateInFirestore]);
 
 
   useEffect(() => {
