@@ -158,13 +158,25 @@ export default function useTimeTracker() {
     let duration = 0;
     let startTime = null;
     let actionText: 'Break In' | 'Lunch In';
+    let timeLimit = 0;
+    let stateUpdate: Partial<UserState>;
 
     if (type === 'break' && status.breakStartTime) {
         startTime = new Date(status.breakStartTime);
         actionText = 'Break In';
+        timeLimit = 15;
+        stateUpdate = { 
+            currentState: 'working',
+            breakStartTime: null,
+        };
     } else if (type === 'lunch' && status.lunchStartTime) {
         startTime = new Date(status.lunchStartTime);
         actionText = 'Lunch In';
+        timeLimit = 60;
+        stateUpdate = {
+            currentState: 'working',
+            lunchStartTime: null,
+        };
     } else {
         return; // No start time found, can't end action
     }
@@ -173,34 +185,30 @@ export default function useTimeTracker() {
         duration = Math.round((new Date().getTime() - startTime.getTime()) / 60000);
     }
     
+    // Log the event regardless of overbreak
     const logData = await logActivity(actionText, duration);
 
-    const BREAK_TIME_LIMIT_MINS = 15;
-    const LUNCH_TIME_LIMIT_MINS = 60;
-
-    if (type === 'break') {
-      if (duration > BREAK_TIME_LIMIT_MINS) {
-        toast({ title: "Warning", description: `Break exceeded by ${duration - BREAK_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
+    // Check for overbreak and log if necessary
+    if (duration > timeLimit) {
+        toast({ title: "Warning", description: `${actionText.replace(' In', '')} exceeded by ${duration - timeLimit} minutes!`, variant: "destructive" });
         await logOverbreak(logData);
-      }
-      setStatus(prev => ({
-          ...prev,
-          currentState: 'working',
-          breakStartTime: null,
-          totalBreakMinutes: prev.totalBreakMinutes + duration
-      }));
-    } else { // Lunch
-       if (duration > LUNCH_TIME_LIMIT_MINS) {
-        toast({ title: "Warning", description: `Lunch exceeded by ${duration - LUNCH_TIME_LIMIT_MINS} minutes!`, variant: "destructive" });
-        await logOverbreak(logData);
-      }
-      setStatus(prev => ({
-          ...prev,
-          currentState: 'working',
-          lunchStartTime: null,
-          totalLunchMinutes: prev.totalLunchMinutes + duration
-      }));
     }
+    
+    // Update state to return to working
+    if(type === 'break'){
+         setStatus(prev => ({
+            ...prev,
+            ...stateUpdate,
+            totalBreakMinutes: prev.totalBreakMinutes + duration
+        }));
+    } else {
+         setStatus(prev => ({
+            ...prev,
+            ...stateUpdate,
+            totalLunchMinutes: prev.totalLunchMinutes + duration
+        }));
+    }
+    
   }, [status, user, toast, logActivity]);
 
 
