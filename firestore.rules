@@ -1,28 +1,53 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    function isUserAuthenticated() {
+      return request.auth != null;
     }
 
-    match /activity/{docId} {
-      allow create: if request.auth != null;
-      allow read, update, delete: if false; 
+    function isUserRequestingOwnData(userId) {
+      return request.auth.uid == userId;
     }
     
+    function isAdmin() {
+      // Check the user's role from their own document.
+      // This requires that users can read their own user document.
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
+    }
+
+    // Users can read their own profile, and only admins can write to other profiles.
+    match /users/{userId} {
+      allow read, write: if isUserRequestingOwnData(userId);
+      allow write: if isAdmin(); // Admins can update any user
+    }
+
+    // Users can only read and write their OWN state document.
+    // Dashboard components MUST use server actions to get lists of states.
     match /userStates/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isUserRequestingOwnData(userId);
     }
-
+    
+    // Activity logs can be created by any authenticated user.
+    // Only admins can read the full activity log collection.
+    match /activity/{docId} {
+      allow read: if isAdmin();
+      allow create: if isUserAuthenticated();
+    }
+    
+    // Overbreak logs can be created by any authenticated user.
+    // Only admins can read the full overbreaks collection.
     match /overbreaks/{docId} {
-      allow read, create: if request.auth != null;
-      allow update, delete: if false;
+      allow read: if isAdmin();
+      allow create: if isUserAuthenticated();
     }
 
+    // Users can create timesheet entries for themselves.
+    // They can read their own entries, and admins can read any entry.
     match /timesheet/{docId} {
-       allow create: if request.auth != null;
-       allow read, update, delete: if false;
+      allow create: if isUserAuthenticated();
+      allow read: if isUserRequestingOwnData(get(/databases/$(database)/documents/timesheet/$(docId)).data.uid) || isAdmin();
     }
   }
 }

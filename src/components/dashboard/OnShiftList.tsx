@@ -8,9 +8,7 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getAllUsersAction } from '@/lib/firebase-admin';
-import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
 
 
 interface OnShiftUser extends User {
@@ -50,7 +48,6 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         if (!currentUser) return;
         setIsLoading(true);
 
-        // Determine current shift based on local time or admin selection
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
         const now = new Date();
         const currentHour = now.getHours();
@@ -78,7 +75,6 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         }
         setTitle(rosterTitle);
 
-        // Fetch all users once
         const usersResult = await getAllUsersAction();
          if (!usersResult.success || !usersResult.users) {
             setIsLoading(false);
@@ -95,55 +91,34 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
 
         const userUids = usersInShift.map(u => u.uid);
 
-        // Set up real-time listener for user states
-        const q = query(collection(db, "userStates"), where('__name__', 'in', userUids));
+        const statesResult = await getUserStates(userUids);
 
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const userStates: Record<string, UserState> = {};
-            querySnapshot.forEach((doc) => {
-                userStates[doc.id] = doc.data() as UserState;
-            });
-            
+        if (statesResult.success && statesResult.states) {
+            const userStates = statesResult.states;
             const rosterUsers = usersInShift.map(user => ({
                 ...user,
                 status: getUserStatus(userStates[user.uid]),
             }));
-            
             setOnShiftUsers(rosterUsers);
-            setIsLoading(false);
-        }, (error) => {
-            console.error("Error fetching user states in real-time:", error);
-            setIsLoading(false);
-        });
-
-        return unsubscribe;
+        }
+        
+        setIsLoading(false);
 
     }, [currentUser]);
 
 
     useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-
-        const init = async () => {
-             unsubscribe = await fetchShiftData();
-        }
-
-        init();
+        fetchShiftData();
 
         const handleStorageChange = () => {
-             if (unsubscribe) unsubscribe();
-             init();
+             fetchShiftData();
         };
 
         window.addEventListener('storage', handleStorageChange);
         
-        // Also set an interval to refetch users periodically in case of shift changes etc.
-        const intervalId = setInterval(handleStorageChange, 300000); // 5 minutes
+        const intervalId = setInterval(fetchShiftData, 60000); // 1 minute
 
         return () => {
-            if (unsubscribe) {
-                unsubscribe();
-            }
             clearInterval(intervalId);
             window.removeEventListener('storage', handleStorageChange);
         }
