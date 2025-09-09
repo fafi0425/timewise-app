@@ -130,7 +130,7 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
         }
     }, [updateOnShiftList]);
 
-    const getActionBadgeVariant = (action: string) => {
+    const getActionBadgeVariant = (action: string): 'secondary' | 'default' | 'destructive' | 'outline' => {
         if (action === 'Working') return 'secondary';
         if (action === 'On Break' || action === 'On Lunch') return 'default';
         if (action === 'Logged Out') return 'destructive';
@@ -180,7 +180,12 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
                                             )}
                                         </div>
                                     </div>
-                                     <Badge variant={getActionBadgeVariant(u.status)}>{u.status}</Badge>
+                                     <Badge 
+                                        variant={getActionBadgeVariant(u.status)}
+                                        className={u.status.includes('Leave') ? 'bg-pantone-blue-2 text-white border-transparent' : ''}
+                                     >
+                                        {u.status}
+                                     </Badge>
                                 </div>
                             ))
                         )}
