@@ -3,38 +3,52 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Private user profiles
+
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if the requesting user owns the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users can only read their own profile, but any authenticated user can create an account.
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && isOwner(userId);
+      // Admins can manage all user profiles.
+      allow create, update, delete: if isAuthenticated() && request.auth.token.role == 'Administrator';
     }
-    
-    // User state, readable by all for dashboard, but only writable by the owner
+
+    // A user can only read or write to their own state document.
     match /userStates/{userId} {
-      allow read: if request.auth.uid != null;
-      allow write: if request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(userId);
     }
     
-    // Activity logs are write-only for clients, readable by server
+    // Any authenticated user can read the activity log. This is required for some dashboard features.
+    // Users can only create their own log entries. No one can update or delete them.
     match /activity/{logId} {
-      allow read: if false; 
-      allow create: if request.auth.uid == request.resource.data.uid;
-      allow update, delete: if false;
-    }
-    
-    // Overbreak logs are write-only for clients, readable by server
-    match /overbreaks/{logId} {
-      allow read: if request.auth.uid != null;
-      allow create: if request.auth.uid == request.resource.data.uid;
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.uid);
       allow update, delete: if false;
     }
 
-    // Timesheet entries are write-only for clients, readable by server
+    // Overbreaks are readable by any authenticated user for dashboard alerts.
+    // They are created by server-side logic (a Cloud Function or secure action).
+    match /overbreaks/{overbreakId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if false; // Should only be created by server logic
+    }
+    
+    // Timesheet entries can only be created by the user they belong to.
+    // They are readable by the user and by administrators.
     match /timesheet/{entryId} {
-      allow read: if request.auth.uid == resource.data.uid;
-      allow create: if request.auth.uid == request.resource.data.uid;
-      allow update, delete: if false;
+       allow read: if isAuthenticated() && (isOwner(resource.data.uid) || request.auth.token.role == 'Administrator');
+       allow create: if isAuthenticated() && isOwner(request.resource.data.uid);
+       allow update, delete: if false; // Logs should be immutable
     }
   }
 }

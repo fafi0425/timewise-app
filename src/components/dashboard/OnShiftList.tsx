@@ -8,6 +8,8 @@ import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
@@ -34,22 +36,36 @@ const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
 
 interface OnShiftListProps {
   allUsers: User[];
-  userStates: Record<string, UserState>;
 }
 
-export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) {
+export default function OnShiftList({ allUsers }: OnShiftListProps) {
     const { user: currentUser } = useAuth();
+    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
+    useEffect(() => {
+        const stateColRef = collection(db, 'userStates');
+        const unsubscribe = onSnapshot(stateColRef, (snapshot) => {
+            const newStates: Record<string, UserState> = {};
+            snapshot.forEach(doc => {
+                newStates[doc.id] = doc.data() as UserState;
+            });
+            setUserStates(newStates);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching real-time user states:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
     const updateOnShiftList = useCallback(() => {
         if (!currentUser || !allUsers || allUsers.length === 0) {
-            setIsLoading(!allUsers || allUsers.length === 0);
             return;
         }
-
-        setIsLoading(false);
 
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
         const now = new Date();
@@ -97,7 +113,7 @@ export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) 
         };
 
         window.addEventListener('storage', handleStorageChange);
-        const intervalId = setInterval(updateOnShiftList, 5000); // Poll for time-based changes
+        const intervalId = setInterval(updateOnShiftList, 60000); // Keep polling for time-based shift changes (e.g. overlap)
 
         return () => {
             clearInterval(intervalId);
