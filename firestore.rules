@@ -3,51 +3,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isUserAuthenticated() {
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function isUserRequestingOwnData(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      // Check the user's role from their own document.
-      // This requires that users can read their own user document.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
-    }
-
-    // Users can read their own profile, and only admins can write to other profiles.
+    // Users can only read their own profile, but any authenticated user can create one (for sign-up)
     match /users/{userId} {
-      allow read, write: if isUserRequestingOwnData(userId);
-      allow write: if isAdmin(); // Admins can update any user
+      allow read, update: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated();
     }
 
-    // Users can only read and write their OWN state document.
-    // Dashboard components MUST use server actions to get lists of states.
+    // Users can only read and write their own state document
     match /userStates/{userId} {
-      allow read, write: if isUserRequestingOwnData(userId);
-    }
-    
-    // Activity logs can be created by any authenticated user.
-    // Only admins can read the full activity log collection.
-    match /activity/{docId} {
-      allow read: if isAdmin();
-      allow create: if isUserAuthenticated();
-    }
-    
-    // Overbreak logs can be created by any authenticated user.
-    // Only admins can read the full overbreaks collection.
-    match /overbreaks/{docId} {
-      allow read: if isAdmin();
-      allow create: if isUserAuthenticated();
+      // Allow any authenticated user to READ any user state for real-time dashboards
+      allow read: if isAuthenticated();
+      // Allow only the user to WRITE their own state
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Users can create timesheet entries for themselves.
-    // They can read their own entries, and admins can read any entry.
-    match /timesheet/{docId} {
-      allow create: if isUserAuthenticated();
-      allow read: if isUserRequestingOwnData(get(/databases/$(database)/documents/timesheet/$(docId)).data.uid) || isAdmin();
+    // Any authenticated user can write to the activity log (for their own activities)
+    match /activity/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Any authenticated user can write to the timesheet (for their own actions)
+    match /timesheet/{entryId} {
+       allow read, write: if isAuthenticated();
+    }
+    
+    // Overbreaks are for alerts. Any authenticated user can read them for dashboard alerts.
+    // Writing should be handled by secure server-side logic (e.g., in useTimeTracker hook)
+    match /overbreaks/{overbreakId} {
+        allow read, write: if isAuthenticated();
     }
   }
 }

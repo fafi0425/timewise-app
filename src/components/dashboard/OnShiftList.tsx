@@ -6,9 +6,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
-import { Users as UsersIcon } from 'lucide-react';
+import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
+import { getAllUsersAction } from '@/lib/firebase-admin';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 interface OnShiftUser extends User {
@@ -40,13 +42,57 @@ interface OnShiftListProps {
 
 export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) {
     const { user: currentUser } = useAuth();
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
-     const fetchShiftData = useCallback(async () => {
-        if (!currentUser) return;
+    const fetchAllUsers = useCallback(async () => {
         setIsLoading(true);
+        const usersResult = await getAllUsersAction();
+        if (usersResult.success && usersResult.users) {
+            setAllUsers(usersResult.users);
+        }
+        setIsLoading(false);
+    }, []);
+
+    useEffect(() => {
+        fetchAllUsers();
+    }, [fetchAllUsers]);
+
+    useEffect(() => {
+        if (allUsers.length === 0) return;
+
+        const uids = allUsers.map(u => u.uid);
+        // Firestore 'in' queries are limited to 30 items. If there are more users, we need multiple listeners.
+        const chunk = <T,>(arr: T[], size: number) => 
+            Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+                arr.slice(i * size, i * size + size)
+            );
+
+        const uidChunks = chunk(uids, 30);
+
+        const unsubscribers = uidChunks.map(uidChunk => {
+            const q = query(collection(db, "userStates"), where("__name__", "in", uidChunk));
+            return onSnapshot(q, (snapshot) => {
+                const states: Record<string, UserState> = {};
+                snapshot.forEach(doc => {
+                    states[doc.id] = doc.data() as UserState;
+                });
+
+                setUserStates(prevStates => ({ ...prevStates, ...states }));
+            }, (error) => {
+                console.error("Error fetching real-time user states:", error);
+            });
+        });
+
+        return () => unsubscribers.forEach(unsub => unsub());
+
+    }, [allUsers]);
+
+    const updateOnShiftList = useCallback(() => {
+        if (!currentUser || allUsers.length === 0) return;
 
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
         const now = new Date();
@@ -75,54 +121,32 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
         }
         setTitle(rosterTitle);
 
-        const usersResult = await getAllUsersAction();
-         if (!usersResult.success || !usersResult.users) {
-            setIsLoading(false);
-            return;
-        }
-        const allUsers = usersResult.users;
         const usersInShift = allUsers.filter(u => u.role !== 'Administrator' && u.shift && shiftsToQuery.includes(u.shift));
-        
-        if (usersInShift.length === 0) {
-            setOnShiftUsers([]);
-            setIsLoading(false);
-            return;
-        }
 
-        const userUids = usersInShift.map(u => u.uid);
+        const rosterUsers = usersInShift.map(user => ({
+            ...user,
+            status: getUserStatus(userStates[user.uid]),
+        })).sort((a,b) => a.name.localeCompare(b.name));
 
-        const statesResult = await getUserStates(userUids);
+        setOnShiftUsers(rosterUsers);
 
-        if (statesResult.success && statesResult.states) {
-            const userStates = statesResult.states;
-            const rosterUsers = usersInShift.map(user => ({
-                ...user,
-                status: getUserStatus(userStates[user.uid]),
-            }));
-            setOnShiftUsers(rosterUsers);
-        }
-        
-        setIsLoading(false);
+    }, [currentUser, allUsers, userStates]);
 
-    }, [currentUser]);
-
-
-    useEffect(() => {
-        fetchShiftData();
+     useEffect(() => {
+        updateOnShiftList();
 
         const handleStorageChange = () => {
-             fetchShiftData();
+             updateOnShiftList();
         };
 
         window.addEventListener('storage', handleStorageChange);
-        
-        const intervalId = setInterval(fetchShiftData, 60000); // 1 minute
+        const intervalId = setInterval(updateOnShiftList, 60000); // Also refresh periodically for time-based shifts
 
         return () => {
             clearInterval(intervalId);
             window.removeEventListener('storage', handleStorageChange);
         }
-    }, [fetchShiftData]);
+    }, [updateOnShiftList]);
 
     const getActionBadgeVariant = (action: string) => {
         if (action === 'Working') return 'secondary';
@@ -152,8 +176,8 @@ export default function OnShiftList({ simpleStatus = false }: OnShiftListProps) 
                 <ScrollArea className="h-72">
                     <div className="space-y-3">
                         {isLoading ? (
-                             <div className="text-center py-10 text-muted-foreground">
-                                <p>Loading shift roster...</p>
+                            <div className="flex justify-center items-center h-full py-10">
+                                <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                             </div>
                         ) : onShiftUsers.length === 0 ? (
                             <div className="text-center py-10 text-muted-foreground">
