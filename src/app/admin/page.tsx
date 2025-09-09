@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction, getUserStates } from '@/lib/firebase-admin';
-import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry, UserState } from '@/lib/types';
+import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction } from '@/lib/firebase-admin';
+import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
@@ -70,7 +70,6 @@ const StatCard = ({ title, value, icon }: { title: string; value: string | numbe
 export default function AdminPage() {
     const [stats, setStats] = useState({ totalEmployees: 0, totalActivities: 0, todayBreaks: 0, todayLunches: 0 });
     const [users, setUsers] = useState<User[]>([]);
-    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [allActivity, setAllActivity] = useState<ActivityLog[]>([]);
     const [overbreaks, setOverbreaks] = useState<ActivityLog[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
@@ -110,11 +109,10 @@ export default function AdminPage() {
     const refreshData = useCallback(async () => {
         setIsLoadingData(true);
         try {
-            const [usersResult, activityResult, overbreaksResult, statesResult] = await Promise.all([
+            const [usersResult, activityResult, overbreaksResult] = await Promise.all([
                 getAllUsersAction(),
                 getAllActivityAction(),
                 getOverbreaksAction(),
-                getAllUsersAction().then(res => res.success && res.users ? getUserStates(res.users.map(u => u.uid)) : {success: false, states: {}})
             ]);
 
             if (usersResult.success && usersResult.users) {
@@ -147,12 +145,6 @@ export default function AdminPage() {
                 setOverbreaks(overbreaksResult.overbreaks);
             } else {
                 setOverbreaks([]);
-            }
-
-            if (statesResult.success && statesResult.states) {
-                setUserStates(statesResult.states);
-            } else {
-                setUserStates({});
             }
 
         } catch (error: any) {
@@ -265,7 +257,7 @@ export default function AdminPage() {
 
             if (result.success) {
                 toast({ title: "Success", description: result.message });
-                // No need to refresh all data, the UI is already updated.
+                // The optimistic update is already applied. No full refresh needed.
             } else {
                 // Revert on failure
                 setUsers(originalUsers);
@@ -468,7 +460,7 @@ export default function AdminPage() {
                     <ShiftManager />
                 </div>
                 <div className="lg:col-span-2">
-                     <OnShiftList allUsers={users} userStates={userStates} />
+                     <OnShiftList allUsers={users} />
                 </div>
             </div>
 

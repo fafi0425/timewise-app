@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/button';
 import { BarChart2, Clock } from 'lucide-react';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import { Card, CardContent } from '@/components/ui/card';
-import { getAllUsersAction, getUserStates } from '@/lib/firebase-admin';
-import type { User, UserState } from '@/lib/types';
+import { getAllUsersAction } from '@/lib/firebase-admin';
+import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardPage() {
@@ -24,18 +24,12 @@ export default function DashboardPage() {
   const { status, summary, countdown, startAction, endAction, clockIn, clockOut } = useTimeTracker();
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [userStates, setUserStates] = useState<Record<string, UserState>>({});
   const { toast } = useToast();
 
   const fetchDashboardData = useCallback(async () => {
     const usersResult = await getAllUsersAction();
     if (usersResult.success && usersResult.users) {
         setAllUsers(usersResult.users);
-        const uids = usersResult.users.map(u => u.uid);
-        const statesResult = await getUserStates(uids);
-        if(statesResult.success && statesResult.states) {
-          setUserStates(statesResult.states);
-        }
     } else {
        toast({ title: "Error", description: "Could not load user data.", variant: "destructive" });
     }
@@ -43,8 +37,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000); // Poll every 30 seconds
-    return () => clearInterval(interval);
   }, [fetchDashboardData]);
 
   return (
@@ -111,7 +103,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-8">
                 <TeamOverbreakAlerts />
-                <OnShiftList allUsers={allUsers} userStates={userStates} />
+                <OnShiftList allUsers={allUsers} />
             </div>
           </div>
           

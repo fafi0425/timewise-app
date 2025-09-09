@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import type { User, UserState, Shift } from '@/lib/types';
 import { SHIFTS } from '@/components/admin/ShiftManager';
 import { Users as UsersIcon, LoaderCircle } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 
 interface OnShiftUser extends User {
     status: 'Working' | 'On Break' | 'On Lunch' | 'Logged Out';
@@ -14,7 +16,6 @@ interface OnShiftUser extends User {
 
 interface OnShiftListProps {
     allUsers: User[];
-    userStates: Record<string, UserState>;
 }
 
 const getOverlappingShift = (hour: number): Shift | null => {
@@ -36,17 +37,35 @@ const getUserStatus = (state: UserState | undefined): OnShiftUser['status'] => {
     return 'Logged Out';
 };
 
-export default function OnShiftList({ allUsers, userStates }: OnShiftListProps) {
+export default function OnShiftList({ allUsers }: OnShiftListProps) {
+    const [userStates, setUserStates] = useState<Record<string, UserState>>({});
     const [onShiftUsers, setOnShiftUsers] = useState<OnShiftUser[]>([]);
     const [title, setTitle] = useState('Current Shift Roster');
     const [isLoading, setIsLoading] = useState(true);
 
+     useEffect(() => {
+        setIsLoading(true);
+        const q = query(collection(db, "userStates"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const states: Record<string, UserState> = {};
+            querySnapshot.forEach((doc) => {
+                states[doc.id] = doc.data() as UserState;
+            });
+            setUserStates(states);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error connecting to live status updates:", error);
+            setIsLoading(false);
+            setTitle("Could not connect to live status");
+        });
+
+        return () => unsubscribe();
+    }, []);
+
     const updateOnShiftList = useCallback(() => {
-        if (!allUsers || allUsers.length === 0) {
-            setIsLoading(true);
+        if (!allUsers || allUsers.length === 0 || Object.keys(userStates).length === 0) {
             return;
         }
-        setIsLoading(false);
 
         const shiftFilter = localStorage.getItem('activeShift') as Shift | null;
         const now = new Date();
