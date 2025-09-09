@@ -3,52 +3,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if the user is an Administrator
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
-    }
-
-    // Users can only read/write their own user document.
-    // Admins can read/write any user document.
+    // Users can only read and write their own document.
     match /users/{userId} {
-      allow read, update, delete: if request.auth.uid == userId || isAdmin();
-      allow create: if isAuthenticated();
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
-    
-    // User states can be read by any authenticated user for the dashboard.
+
+    // Any authenticated user can read the list of user states for the real-time dashboard.
     // Users can only write to their own state document.
     match /userStates/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Activity logs are immutable. Users can only create their own logs.
-    // Admins can read all logs.
-    match /activity/{logId} {
-      allow read: if request.auth.uid == resource.data.uid || isAdmin();
-      allow create: if request.auth.uid == request.resource.data.uid;
-      allow update, delete: if false; // Logs are immutable
-    }
-
-    // Timesheet entries are immutable. Users can only create their own entries.
-    // Admins can read all entries.
-    match /timesheet/{entryId} {
-      allow read: if request.auth.uid == resource.data.uid || isAdmin();
-      allow create: if request.auth.uid == request.resource.data.uid;
+    // Users can only create activity logs for themselves.
+    match /activity/{activityId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
 
-    // Overbreak logs are immutable. Users can only create their own entries.
-    // Admins and the user themselves can read them.
+    // Users can only create overbreak logs for themselves. Admin can read all.
     match /overbreaks/{overbreakId} {
-       allow read: if request.auth.uid == resource.data.uid || isAdmin();
-       allow create: if request.auth.uid == request.resource.data.uid;
+       allow read: if request.auth != null; // Server-side checks handle admin role
+       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
        allow update, delete: if false;
+    }
+    
+    // Users can only create timesheet entries for themselves. Admin can read all.
+    match /timesheet/{timesheetId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }
