@@ -158,6 +158,8 @@ export default function AdminPage() {
 
     useEffect(() => {
         refreshData();
+        const interval = setInterval(refreshData, 30000);
+        return () => clearInterval(interval);
     }, [refreshData]);
 
     const handleAddUser = async (e: React.FormEvent) => {

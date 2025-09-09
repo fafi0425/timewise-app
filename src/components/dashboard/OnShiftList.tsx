@@ -76,9 +76,9 @@ export default function OnShiftList({ allUsers }: OnShiftListProps) {
         const nightShiftStart = SHIFTS.night.start!;
         if (currentHour >= nightShiftStart || currentHour < nightShiftEnd) {
             actualCurrentShift = 'night';
-        } else if (currentHour >= SHIFTS.morning.start! && currentHour < SHIFTS.morning.end!) {
+        } else if (SHIFTS.morning.start! <= currentHour && currentHour < SHIFTS.morning.end!) {
             actualCurrentShift = 'morning';
-        } else if (currentHour >= SHIFTS.mid.start! && currentHour < SHIFTS.mid.end!) {
+        } else if (SHIFTS.mid.start! <= currentHour && currentHour < SHIFTS.mid.end!) {
             actualCurrentShift = 'mid';
         }
 

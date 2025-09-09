@@ -33,6 +33,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchUsers();
+    const interval = setInterval(fetchUsers, 60000); // Periodically refresh user list
+    return () => clearInterval(interval);
   }, [fetchUsers]);
 
   return (
