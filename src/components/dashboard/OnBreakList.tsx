@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Coffee, Utensils } from 'lucide-react';
 import type { User } from '@/lib/types';
-import { getUsersOnBreakOrLunch } from '@/lib/firebase-admin';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { getAllUsersAction } from '@/lib/firebase-admin';
 
 interface OnBreakUser extends User {
     type: 'break' | 'lunch';
@@ -13,22 +15,43 @@ interface OnBreakUser extends User {
 
 export default function OnBreakList() {
   const [onBreakUsers, setOnBreakUsers] = useState<OnBreakUser[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    const fetchOnBreakUsers = async () => {
-        const result = await getUsersOnBreakOrLunch();
+    const fetchAllUsers = async () => {
+        const result = await getAllUsersAction();
         if (result.success && result.users) {
-            setOnBreakUsers(result.users as OnBreakUser[]);
+            setAllUsers(result.users);
         }
     }
-    
-    fetchOnBreakUsers();
-    // Fetch every 30 seconds to get updates
-    const intervalId = setInterval(fetchOnBreakUsers, 30000); 
-
-    // Cleanup the interval when the component unmounts
-    return () => clearInterval(intervalId);
+    fetchAllUsers();
   }, []);
+
+  useEffect(() => {
+    if (allUsers.length === 0) return;
+
+    const q = query(collection(db, "userStates"), where('currentState', 'in', ['break', 'lunch']));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const usersOnBreak: OnBreakUser[] = [];
+        snapshot.forEach(doc => {
+            const state = doc.data();
+            const user = allUsers.find(u => u.uid === doc.id);
+            if (user) {
+                usersOnBreak.push({
+                    ...user,
+                    type: state.currentState as 'break' | 'lunch',
+                    startTime: state.currentState === 'break' ? state.breakStartTime : state.lunchStartTime
+                });
+            }
+        });
+        setOnBreakUsers(usersOnBreak);
+    }, (error) => {
+        console.error("Error fetching on-break users:", error);
+    });
+
+    return () => unsubscribe();
+  }, [allUsers]);
 
   return (
     <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
@@ -43,8 +66,8 @@ export default function OnBreakList() {
             <p>No team members are currently on break or lunch.</p>
           </div>
         ) : (
-          onBreakUsers.map((u, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+          onBreakUsers.map((u) => (
+            <div key={u.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <div>
                     <div className="font-medium text-card-foreground">{u.name}</div>
                     <div className="text-sm text-muted-foreground">{u.department}</div>

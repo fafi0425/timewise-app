@@ -4,37 +4,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Users can read/update their own data. Any authenticated user can create a user (for sign-up).
     match /users/{userId} {
-      // Any authenticated user can create a user (for sign-up).
-      allow create: if request.auth != null;
-      // Users can read/update their own data.
       allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
     
+    // A user can only write to their own state, but any authenticated user can read states for dashboard UIs.
     match /userStates/{userId} {
-      // Any authenticated user can read user states for real-time dashboards.
       allow read: if request.auth != null;
-      // A user can only write to their own state document.
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // A user can only create their own activity logs. Admins read this via server actions.
     match /activity/{activityId} {
-      // A user can only create their own activity logs.
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      // Activity logs are not read directly by clients.
-      allow read: if false;
+      allow read, list: if request.auth != null;
     }
     
+    // Any authenticated user can read the overbreaks collection for real-time alerts.
     match /overbreaks/{overbreakId} {
-       // Any authenticated user can read the overbreaks collection for real-time alerts.
        allow read: if request.auth != null;
     }
     
+    // A user can only create their own timesheet entries. Reads happen via secure server actions.
     match /timesheet/{entryId} {
-      // A user can only create their own timesheet entries.
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      // Timesheet data is read via secure server actions, not directly.
-      allow read: if false;
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
     }
   }
 }
