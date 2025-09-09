@@ -1,46 +1,28 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own user document
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Admins can do anything with user docs
-    match /users/{userId} {
-        allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrator';
-    }
 
-    // Any authenticated user can read the list of user states for dashboard UIs
+    match /activity/{docId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false; 
+    }
+    
     match /userStates/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Activity logs can only be created by the user themselves.
-    // Reading activity logs is handled by server actions.
-    match /activity/{logId} {
-      allow read: if false; // No client-side reads
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
-    }
-    
-    // Timesheet entries can only be created by the user themselves.
-    // Reading timesheet data is handled by server actions.
-    match /timesheet/{entryId} {
-      allow read: if false; // No client-side reads
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    match /overbreaks/{docId} {
+      allow read, create: if request.auth != null;
       allow update, delete: if false;
     }
 
-    // Overbreak alerts can be read by any authenticated user for the dashboard
-    // but can only be created by the system (via server-side logic).
-    match /overbreaks/{overbreakId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null; // Should be tightened if possible, but server logic creates this.
-      allow write: if false;
+    match /timesheet/{docId} {
+       allow create: if request.auth != null;
+       allow read, update, delete: if false;
     }
   }
 }
