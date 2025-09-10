@@ -168,7 +168,7 @@ function ResetPasswordFormComponent() {
 // Wrap the component in Suspense to handle useSearchParams
 export default function ResetPasswordForm() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="rounded-3xl bg-card/95 p-8 backdrop-blur-sm card-shadow text-center"><LoaderCircle className="mx-auto h-8 w-8 animate-spin text-primary" /><p className="mt-4 text-card-foreground">Loading...</p></div>}>
             <ResetPasswordFormComponent />
         </Suspense>
     )
