@@ -348,14 +348,14 @@ export default function AdminPage() {
         const tableRows: (string|number|null)[][] = [];
 
         overbreaks.forEach(o => {
-            const excessTime = o.duration - (o.action.includes('Break') ? 15 : 60);
+            const excessTime = o.duration && (o.duration - (o.action.includes('Break') ? 15 : 60));
             const logData = [
                 o.employeeName,
                 o.date,
                 o.startTime || 'N/A',
                 o.endTime || 'N/A',
                 o.action.replace(' In', ''),
-                excessTime > 0 ? excessTime : 'N/A'
+                excessTime && excessTime > 0 ? excessTime : 'N/A'
             ];
             tableRows.push(logData);
         });
@@ -745,7 +745,7 @@ export default function AdminPage() {
                                     <TableCell className="text-red-600">{o.action.replace(' In', '')}</TableCell>
                                     <TableCell className="text-red-600">{o.startTime || 'N/A'}</TableCell>
                                     <TableCell className="text-red-600">{o.endTime || 'N/A'}</TableCell>
-                                    <TableCell className="text-red-600 font-bold">{o.duration - (o.action.includes('Break') ? 15 : 60)} min</TableCell>
+                                    <TableCell className="text-red-600 font-bold">{o.duration ? (o.duration - (o.action.includes('Break') ? 15 : 60)) : 0} min</TableCell>
                                 </TableRow>
                             ))}
                             </TableBody>
