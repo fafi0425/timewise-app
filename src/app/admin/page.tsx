@@ -778,14 +778,47 @@ export default function AdminPage() {
                         Use these actions for system cleanup and maintenance. These are destructive operations and cannot be undone.
                     </p>
                     <div className="flex flex-wrap gap-4">
-                        <Button variant="outline" onClick={handleCleanupUsers} disabled={isCleaningUsers}>
-                            {isCleaningUsers ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                            Cleanup Stale Users
-                        </Button>
-                         <Button variant="outline" onClick={handleCleanupLogs} disabled={isCleaningLogs}>
-                            {isCleaningLogs ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                            Cleanup Old Logs (90d)
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" disabled={isCleaningUsers}>
+                                    {isCleaningUsers ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                                    Cleanup Stale Users
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will scan for and remove user profiles in the database that no longer have corresponding authentication accounts. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleCleanupUsers}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" disabled={isCleaningLogs}>
+                                    {isCleaningLogs ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                    Cleanup Old Logs (90d)
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete all activity logs older than 90 days from the database. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleCleanupLogs}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
 
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
