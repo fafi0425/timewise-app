@@ -16,9 +16,9 @@ export default function AnimatedClock() {
 
   useEffect(() => {
     // Generate styles only on the client, after the component has mounted
-    const styles = hourMarkers.map(() => {
+    const styles = hourMarkers.map((_, i) => {
         return {
-            '--delay': `${1 + Math.random() * 0.8}s`,
+            '--delay': `${i * 0.1}s`, // Start delay from 0 for concurrent animation
             '--r-start': `0deg`
         };
     });
@@ -116,7 +116,7 @@ export default function AnimatedClock() {
               className="hour-marker"
               style={{
                 // @ts-ignore
-                '--delay': `${1 + i * 0.1}s`,
+                '--delay': `${i * 0.1}s`,
                 '--r-end': `${angle}deg`
               }}
             >
