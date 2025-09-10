@@ -68,12 +68,12 @@ export default function AnimatedClock() {
         }
 
         .clock-face {
-          animation: drawCircle 1s cubic-bezier(0.5, 1, 0.5, 1) forwards;
+          animation: drawCircle 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
         
         .hour-marker {
           transform-origin: center;
-          animation: assembleFromLine 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: assembleFromLine 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
           animation-delay: var(--delay);
           opacity: 0;
         }
@@ -116,7 +116,7 @@ export default function AnimatedClock() {
               className="hour-marker"
               style={{
                 // @ts-ignore
-                '--delay': `${i * 0.025}s`,
+                '--delay': `0s`,
                 '--r-end': `${angle}deg`
               }}
             >
