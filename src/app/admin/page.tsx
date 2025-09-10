@@ -734,6 +734,9 @@ export default function AdminPage() {
                                         <div className="font-medium text-red-700">{o.employeeName}</div>
                                         <div className="text-sm text-red-600">{o.action.replace(' In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
                                         <div className="text-xs text-gray-500">{o.date} at {o.time}</div>
+                                        {o.startTime && o.endTime && (
+                                             <div className="text-xs text-gray-500">From: {o.startTime} To: {o.endTime}</div>
+                                        )}
                                     </div>
                                     <div className="text-red-500 text-xl">⚠️</div>
                                 </div>

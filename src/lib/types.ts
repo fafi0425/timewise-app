@@ -34,6 +34,8 @@ export interface ActivityLog {
   action: 'Break Out' | 'Break In' | 'Lunch Out' | 'Lunch In';
   duration: number | null;
   timestamp: number;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface UserState {

@@ -117,8 +117,11 @@ export default function useTimeTracker() {
     } else {
         return; // Should not happen if UI is disabled correctly
     }
-
-    duration = Math.round((new Date().getTime() - (startTime?.getTime() ?? 0)) / 60000);
+    
+    const endTime = new Date();
+    duration = Math.round((endTime.getTime() - (startTime?.getTime() ?? 0)) / 60000);
+    
+    const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     // Optimistic UI Update first
     let newState: UserState;
@@ -140,7 +143,14 @@ export default function useTimeTracker() {
     setStatus(newState);
 
     // Background logging and state sync
-    const logData = await logActivityServer(user, actionText, duration);
+    const logData = await logActivityServer(
+        user, 
+        actionText, 
+        duration, 
+        startTime ? formatTime(startTime) : undefined, 
+        formatTime(endTime)
+    );
+
     if (duration > timeLimit) {
         toast({ title: "Warning", description: `${actionText.replace(' In', '')} exceeded by ${duration - timeLimit} minutes!`, variant: "destructive" });
         if (logData) {

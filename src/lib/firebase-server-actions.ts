@@ -21,7 +21,13 @@ export async function updateUserStateInFirestore(uid: string, newState: UserStat
   await stateDocRef.set(newState, { merge: true });
 }
 
-export async function logActivity(user: User, action: ActivityLog['action'], duration: number | null = null): Promise<Omit<ActivityLog, 'id'> | null> {
+export async function logActivity(
+    user: User, 
+    action: ActivityLog['action'], 
+    duration: number | null = null,
+    startTime?: string,
+    endTime?: string
+): Promise<Omit<ActivityLog, 'id'> | null> {
   if (!user) {
     console.error("User not provided, cannot log activity.");
     return null;
@@ -34,7 +40,9 @@ export async function logActivity(user: User, action: ActivityLog['action'], dur
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     action,
     duration,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    startTime,
+    endTime
   };
   await db.collection('activity').add(newLog);
   return newLog;
