@@ -18,7 +18,7 @@ export default function AnimatedClock() {
     // Generate styles only on the client, after the component has mounted
     const styles = hourMarkers.map((_, i) => {
         return {
-            '--delay': `${i * 0.1}s`, // Start delay from 0 for concurrent animation
+            '--delay': `${i * 0.1}s`,
             '--r-start': `0deg`
         };
     });
