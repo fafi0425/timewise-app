@@ -25,7 +25,7 @@ export default function LandingPage() {
               <Clock className="h-6 w-6 text-primary" />
               <span className="ml-2 text-lg font-semibold text-primary font-headline">TimeWise</span>
             </Link>
-            <nav className="ml-auto flex gap-4 sm:gap-6">
+            <nav className="ml-auto flex gap-4 sm:gap-6 animate-slide-in-from-right animation-delay-400">
               <Button asChild variant="ghost" className="text-sm font-medium text-primary hover:bg-black/10 hover:text-primary">
                 <Link href="/login">Sign In</Link>
               </Button>
