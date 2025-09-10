@@ -61,7 +61,7 @@ export default function AnimatedClock() {
       <svg
         viewBox="0 0 100 100"
         className="w-full h-full"
-        style={{ filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.2))' }}
+        style={{ filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))' }}
       >
         {/* Clock Face */}
         <circle
@@ -69,9 +69,9 @@ export default function AnimatedClock() {
           cx="50"
           cy="50"
           r="48"
-          fill="rgba(255, 255, 255, 0.2)"
-          stroke="hsl(var(--primary))"
-          strokeWidth="1.5"
+          fill="rgba(255, 255, 255, 0.3)"
+          stroke="hsl(var(--primary-foreground))"
+          strokeWidth="2"
         />
 
         {/* Hour Markers */}
@@ -100,8 +100,8 @@ export default function AnimatedClock() {
                 y1="5"
                 x2="50"
                 y2={hour % 3 === 0 ? "12" : "8"}
-                stroke="hsl(var(--primary))"
-                strokeWidth={hour % 3 === 0 ? "1" : "0.5"}
+                stroke="hsl(var(--primary-foreground))"
+                strokeWidth={hour % 3 === 0 ? "1.5" : "0.75"}
                 strokeLinecap="round"
               />
             </g>
@@ -115,8 +115,8 @@ export default function AnimatedClock() {
           y1="50"
           x2="50"
           y2="30"
-          stroke="hsl(var(--secondary))"
-          strokeWidth="1.5"
+          stroke="hsl(var(--primary-foreground))"
+          strokeWidth="2.5"
           strokeLinecap="round"
           style={{ 
             // @ts-ignore
@@ -130,8 +130,8 @@ export default function AnimatedClock() {
           y1="50"
           x2="50"
           y2="20"
-          stroke="hsl(var(--secondary))"
-          strokeWidth="1"
+          stroke="hsl(var(--primary-foreground))"
+          strokeWidth="1.5"
           strokeLinecap="round"
            style={{ 
             // @ts-ignore
@@ -140,7 +140,7 @@ export default function AnimatedClock() {
         />
 
          {/* Center dot */}
-         <circle cx="50" cy="50" r="2" fill="hsl(var(--secondary))" className="clock-face" style={{ animationDelay: '1.8s' }} />
+         <circle cx="50" cy="50" r="3" fill="hsl(var(--primary-foreground))" className="clock-face" style={{ animationDelay: '1.8s' }} />
 
       </svg>
     </div>
