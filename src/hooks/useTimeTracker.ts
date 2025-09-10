@@ -147,7 +147,7 @@ export default function useTimeTracker() {
         user, 
         actionText, 
         duration, 
-        startTime ? formatTime(startTime) : undefined, 
+        formatTime(startTime),
         formatTime(endTime)
     );
 
