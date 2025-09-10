@@ -2,10 +2,37 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+
+type MarkerStyle = {
+  '--delay': string;
+  '--tx-start': string;
+  '--ty-start': string;
+  '--r-start': string;
+};
 
 export default function AnimatedClock() {
+  const [markerStyles, setMarkerStyles] = useState<MarkerStyle[]>([]);
   const hourMarkers = Array.from({ length: 12 }, (_, i) => i);
   const circleCircumference = 2 * Math.PI * 48; // 2 * pi * r
+
+  useEffect(() => {
+    // Generate styles only on the client, after the component has mounted
+    const styles = hourMarkers.map(() => {
+        const randomAngle = Math.random() * 360;
+        const randomDist = 60 + Math.random() * 40;
+        const startX = Math.cos((randomAngle - 90) * Math.PI / 180) * randomDist;
+        const startY = Math.sin((randomAngle - 90) * Math.PI / 180) * randomDist;
+        
+        return {
+            '--delay': `${1 + Math.random() * 0.8}s`,
+            '--tx-start': `${startX}px`,
+            '--ty-start': `${startY}px`,
+            '--r-start': `${Math.random() * 360 - 180}deg`
+        };
+    });
+    setMarkerStyles(styles);
+  }, []); // Empty dependency array ensures this runs only once on the client
 
   return (
     <div className="relative w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] xl:w-[500px] xl:h-[500px]">
@@ -79,12 +106,8 @@ export default function AnimatedClock() {
         />
 
         {/* Hour Markers */}
-        {hourMarkers.map(hour => {
+        {markerStyles.length > 0 && hourMarkers.map((hour, i) => {
           const angle = hour * 30;
-          const randomAngle = Math.random() * 360;
-          const randomDist = 60 + Math.random() * 40;
-          const startX = Math.cos((randomAngle - 90) * Math.PI / 180) * randomDist;
-          const startY = Math.sin((randomAngle - 90) * Math.PI / 180) * randomDist;
 
           return (
             <g
@@ -92,10 +115,7 @@ export default function AnimatedClock() {
               className="hour-marker"
               style={{
                 // @ts-ignore
-                '--delay': `${1 + Math.random() * 0.8}s`,
-                '--tx-start': `${startX}px`,
-                '--ty-start': `${startY}px`,
-                '--r-start': `${Math.random() * 360 - 180}deg`
+                ...markerStyles[i]
               }}
             >
               <line
