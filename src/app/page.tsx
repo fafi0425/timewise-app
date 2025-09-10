@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Clock, BarChartBig, Users, CalendarCheck } from 'lucide-react';
-import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import AnimatedClock from '@/components/landing/AnimatedClock';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
   <Card className="bg-white/50 backdrop-blur-md border-primary/20 text-card-foreground card-shadow">
@@ -55,14 +55,9 @@ export default function LandingPage() {
                       </Button>
                     </div>
                   </div>
-                  <Image
-                    src="https://picsum.photos/600/600"
-                    width="600"
-                    height="600"
-                    alt="Hero"
-                    data-ai-hint="work time management"
-                    className="mx-auto aspect-square overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
-                  />
+                  <div className="mx-auto flex items-center justify-center lg:order-last">
+                    <AnimatedClock />
+                  </div>
                 </div>
               </div>
             </section>
