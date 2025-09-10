@@ -5,7 +5,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendEmailVerification,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  confirmPasswordReset,
+  verifyPasswordResetCode as verifyFirebaseResetCode,
 } from 'firebase/auth';
 import { 
     collection, 
@@ -153,6 +155,34 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
         throw new Error("Failed to send password reset email.");
     }
 };
+
+export const verifyResetCode = async (code: string): Promise<string> => {
+    try {
+        const email = await verifyFirebaseResetCode(auth, code);
+        return email;
+    } catch (error: any) {
+        console.error("Error verifying password reset code:", error);
+         if (error.code === 'auth/invalid-action-code') {
+            throw new Error("The password reset link is invalid or has expired. Please request a new one.");
+        }
+        throw new Error("An unexpected error occurred while verifying the reset link.");
+    }
+}
+
+export const resetPassword = async (code: string, newPass: string): Promise<void> => {
+    try {
+        await confirmPasswordReset(auth, code, newPass);
+    } catch (error: any) {
+        console.error("Error resetting password:", error);
+         if (error.code === 'auth/invalid-action-code') {
+            throw new Error("The password reset link is invalid or has expired. Please request a new one.");
+        }
+        if (error.code === 'auth/weak-password') {
+            throw new Error("Password is too weak. It must be at least 6 characters long.");
+        }
+        throw new Error("Failed to reset password.");
+    }
+}
 
 export const signOutUser = async () => {
     try {
