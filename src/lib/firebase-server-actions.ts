@@ -41,8 +41,8 @@ export async function logActivity(
     action,
     duration,
     timestamp: Date.now(),
-    startTime,
-    endTime
+    startTime: startTime ?? null,
+    endTime: endTime ?? null,
   };
   await db.collection('activity').add(newLog);
   return newLog;
