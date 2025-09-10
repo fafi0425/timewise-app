@@ -195,7 +195,7 @@ export default function AdminPage() {
             }
 
             tempOverbreaks = tempOverbreaks.filter(o => {
-                const logDate = new Date(o.date);
+                const logDate = new Date(o.timestamp);
                 return logDate.getMonth() === overbreakMonthFilter && logDate.getFullYear() === overbreakYearFilter;
             });
 
@@ -754,7 +754,7 @@ export default function AdminPage() {
                             <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
                                 <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
                             </CardTitle>
-                             <DialogDescription>Filter overbreaks by employee and date range.</DialogDescription>
+                             <p className="text-sm text-muted-foreground">Filter overbreaks by employee and date range.</p>
                         </div>
                         <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
                             <FileDown className="mr-2 h-4 w-4" /> Download PDF
