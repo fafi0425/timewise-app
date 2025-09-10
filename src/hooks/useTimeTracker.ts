@@ -49,7 +49,16 @@ export default function useTimeTracker() {
   const clockIn = useCallback(async () => {
     if (!user) return;
 
-    const newState: UserState = {...status, isClockedIn: true, currentState: 'working'};
+    const newState: UserState = {
+        ...status, 
+        isClockedIn: true, 
+        currentState: 'working',
+        // Reset summary stats on new clock-in
+        totalBreakMinutes: 0,
+        totalLunchMinutes: 0,
+        breakStartTime: null,
+        lunchStartTime: null,
+    };
     setStatus(newState); // Optimistic update
     toast({ title: "Clocked In", description: "Your work session has started." });
 
