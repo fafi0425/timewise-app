@@ -6,8 +6,6 @@ import { useState, useEffect } from 'react';
 
 type MarkerStyle = {
   '--delay': string;
-  '--tx-start': string;
-  '--ty-start': string;
   '--r-start': string;
 };
 
@@ -21,8 +19,6 @@ export default function AnimatedClock() {
     const styles = hourMarkers.map(() => {
         return {
             '--delay': `${1 + Math.random() * 0.8}s`,
-            '--tx-start': `0px`,
-            '--ty-start': `0px`,
             '--r-start': `0deg`
         };
     });
