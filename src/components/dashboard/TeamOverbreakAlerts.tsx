@@ -68,6 +68,9 @@ export default function TeamOverbreakAlerts() {
                             {type} exceeded by {excess} minutes ({log.duration}/{limit} min)
                         </div>
                         <div className="text-xs text-gray-500">{log.date} at {log.time}</div>
+                         {log.startTime && log.endTime && (
+                             <div className="text-xs text-gray-500">From: {log.startTime} To: {log.endTime}</div>
+                        )}
                     </div>
                     <div className="text-xl">
                         <AlertTriangle className={isCurrentUser ? 'text-orange-500' : 'text-red-500'} />

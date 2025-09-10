@@ -344,7 +344,7 @@ export default function AdminPage() {
         }
 
         const doc = new jsPDF({ orientation: 'landscape' });
-        const tableColumn = ["Employee", "Date", "Time", "Type", "Exceeded By (min)"];
+        const tableColumn = ["Employee", "Date", "Start Time", "End Time", "Type", "Exceeded By (min)"];
         const tableRows: (string|number|null)[][] = [];
 
         overbreaks.forEach(o => {
@@ -352,7 +352,8 @@ export default function AdminPage() {
             const logData = [
                 o.employeeName,
                 o.date,
-                o.time,
+                o.startTime || 'N/A',
+                o.endTime || 'N/A',
                 o.action.replace(' In', ''),
                 excessTime > 0 ? excessTime : 'N/A'
             ];
@@ -365,7 +366,7 @@ export default function AdminPage() {
             startY: 20,
         });
         doc.text("Overbreak Alerts Report", 14, 15);
-        doc.save(`Overbreaks_Report_${new Date().toLocaleDateString()}.pdf`);
+        doc.save(`Overbreaks_Report_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
     };
 
     const handleCleanupUsers = async () => {
