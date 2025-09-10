@@ -19,16 +19,11 @@ export default function AnimatedClock() {
   useEffect(() => {
     // Generate styles only on the client, after the component has mounted
     const styles = hourMarkers.map(() => {
-        const randomAngle = Math.random() * 360;
-        const randomDist = 60 + Math.random() * 40;
-        const startX = Math.cos((randomAngle - 90) * Math.PI / 180) * randomDist;
-        const startY = Math.sin((randomAngle - 90) * Math.PI / 180) * randomDist;
-        
         return {
             '--delay': `${1 + Math.random() * 0.8}s`,
-            '--tx-start': `${startX}px`,
-            '--ty-start': `${startY}px`,
-            '--r-start': `${Math.random() * 360 - 180}deg`
+            '--tx-start': `0px`,
+            '--ty-start': `0px`,
+            '--r-start': `0deg`
         };
     });
     setMarkerStyles(styles);
@@ -42,16 +37,25 @@ export default function AnimatedClock() {
             stroke-dashoffset: 0;
           }
         }
-        @keyframes assembleHourMarker {
-          from {
+        
+        @keyframes assembleFromLine {
+          0% {
             opacity: 0;
-            transform: translate(var(--tx-start), var(--ty-start)) scale(0.2) rotate(var(--r-start));
+            /* Start from top-left corner, relative to the SVG center */
+            transform: translate(-100px, -100px) scale(0.5) rotate(-90deg);
           }
-          to {
+          40% {
             opacity: 1;
-            transform: translate(0, 0) scale(1) rotate(0deg);
+            /* Form a horizontal line */
+            transform: translate(0, 0) scale(0.8) rotate(0deg);
+          }
+          100% {
+            opacity: 1;
+            /* End in final position */
+            transform: translate(0, 0) scale(1) rotate(var(--r-end));
           }
         }
+
         @keyframes assembleHand {
             from {
                 opacity: 0;
@@ -73,8 +77,9 @@ export default function AnimatedClock() {
         
         .hour-marker {
           transform-origin: center;
-          animation: assembleHourMarker 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          animation: assembleFromLine 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           animation-delay: var(--delay);
+          opacity: 0;
         }
         
         .hand, .center-dot {
@@ -115,11 +120,11 @@ export default function AnimatedClock() {
               className="hour-marker"
               style={{
                 // @ts-ignore
-                ...markerStyles[i]
+                '--delay': `${1 + i * 0.1}s`,
+                '--r-end': `${angle}deg`
               }}
             >
               <line
-                transform={`rotate(${angle} 50 50)`}
                 x1="50"
                 y1="5"
                 x2="50"
