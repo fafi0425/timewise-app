@@ -1,7 +1,7 @@
 'use client';
-import { KeyRound } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
+import LogoIcon from '@/components/shared/LogoIcon';
 import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block" aria-label="Go to landing page">
             <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md card-shadow transition-transform hover:scale-105">
-              <KeyRound className="h-12 w-12 text-white" />
+              <LogoIcon className="h-12 w-12 text-white" />
             </div>
             <h1 className="font-headline text-4xl font-bold text-white mb-2">Reset Password</h1>
           </Link>

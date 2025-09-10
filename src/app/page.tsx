@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, BarChartBig, Users, CalendarCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AnimatedClock from '@/components/landing/AnimatedClock';
+import LogoIcon from '@/components/shared/LogoIcon';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
   <Card className="bg-white/50 backdrop-blur-md border-primary/20 text-card-foreground card-shadow">
@@ -22,7 +23,7 @@ export default function LandingPage() {
        <div className="relative z-10 flex flex-col flex-1">
           <header className="px-4 lg:px-6 h-14 flex items-center bg-white/30 backdrop-blur-md border-b border-black/10 sticky top-0 z-50">
             <Link href="/" className="flex items-center justify-center" prefetch={false}>
-              <Clock className="h-6 w-6 text-primary" />
+              <LogoIcon className="h-6 w-6 text-primary" />
               <span className="ml-2 text-lg font-semibold text-primary font-headline">TimeWise</span>
             </Link>
             <nav className="ml-auto flex gap-4 sm:gap-6 animate-slide-in-from-right animation-delay-400">
