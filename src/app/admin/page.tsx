@@ -727,22 +727,30 @@ export default function AdminPage() {
                         </Button>
                     </CardHeader>
                     <ScrollArea className="h-80 pr-4">
-                        <div className="space-y-3">
-                            {overbreaks.length === 0 ? <p className="text-green-600">No overbreaks detected.</p> :
-                            overbreaks.map(o => (
-                                <div key={o.id} className="flex items-center justify-between p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
-                                    <div>
-                                        <div className="font-medium text-red-700">{o.employeeName}</div>
-                                        <div className="text-sm text-red-600">{o.action.replace(' In', '')} exceeded by {o.duration - (o.action.includes('Break') ? 15 : 60)} mins</div>
-                                        <div className="text-xs text-gray-500">{o.date} at {o.time}</div>
-                                        {o.startTime && o.endTime && (
-                                             <div className="text-xs text-gray-500">From: {o.startTime} To: {o.endTime}</div>
-                                        )}
-                                    </div>
-                                    <div className="text-red-500 text-xl">⚠️</div>
-                                </div>
+                        {overbreaks.length === 0 ? <p className="text-center py-10 text-green-600">No overbreaks detected today.</p> :
+                         <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Employee</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Start</TableHead>
+                                    <TableHead>End</TableHead>
+                                    <TableHead>Exceeded</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {overbreaks.map(o => (
+                                <TableRow key={o.id} className="bg-red-50 border-red-500">
+                                    <TableCell className="font-medium text-red-700">{o.employeeName}</TableCell>
+                                    <TableCell className="text-red-600">{o.action.replace(' In', '')}</TableCell>
+                                    <TableCell className="text-red-600">{o.startTime || 'N/A'}</TableCell>
+                                    <TableCell className="text-red-600">{o.endTime || 'N/A'}</TableCell>
+                                    <TableCell className="text-red-600 font-bold">{o.duration - (o.action.includes('Break') ? 15 : 60)} min</TableCell>
+                                </TableRow>
                             ))}
-                        </div>
+                            </TableBody>
+                         </Table>
+                        }
                     </ScrollArea>
                 </Card>
             </div>
