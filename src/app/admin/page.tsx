@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
-import { getAllUsersAction, getAllActivityAction, getTimesheetForUserByMonth, getOverbreaksAction } from '@/lib/firebase-admin';
+import { getAllUsersAction, getAllActivityAction, getOverbreaksAction } from '@/lib/firebase-admin';
 import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle, DatabaseZap, ServerCrash } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
@@ -48,6 +48,8 @@ import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { processTimesheetData } from '@/lib/timesheet-processor';
 import { Separator } from '@/components/ui/separator';
+import { getTimesheetForUserByMonth } from '@/lib/firebase-admin';
+
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -119,6 +121,12 @@ export default function AdminPage() {
     const [processedData, setProcessedData] = useState<ProcessedDay[]>([]);
     const [isTimesheetLoading, setIsTimesheetLoading] = useState(false);
     const YEARS = getYears();
+    
+    // State for overbreak filters
+    const [filteredOverbreaks, setFilteredOverbreaks] = useState<ActivityLog[]>([]);
+    const [overbreakEmployeeFilter, setOverbreakEmployeeFilter] = useState('all');
+    const [overbreakMonthFilter, setOverbreakMonthFilter] = useState(new Date().getMonth());
+    const [overbreakYearFilter, setOverbreakYearFilter] = useState(new Date().getFullYear());
 
 
     const { toast } = useToast();
@@ -160,8 +168,10 @@ export default function AdminPage() {
 
              if (overbreaksResult.success && overbreaksResult.overbreaks) {
                 setOverbreaks(overbreaksResult.overbreaks);
+                setFilteredOverbreaks(overbreaksResult.overbreaks); // Initially, show all
             } else {
                 setOverbreaks([]);
+                setFilteredOverbreaks([]);
             }
 
         } catch (error: any) {
@@ -174,6 +184,25 @@ export default function AdminPage() {
     useEffect(() => {
         refreshData();
     }, [refreshData]);
+    
+    // Effect for filtering overbreaks
+    useEffect(() => {
+        const applyOverbreakFilter = () => {
+            let tempOverbreaks = overbreaks;
+
+            if (overbreakEmployeeFilter !== 'all') {
+                tempOverbreaks = tempOverbreaks.filter(o => o.uid === overbreakEmployeeFilter);
+            }
+
+            tempOverbreaks = tempOverbreaks.filter(o => {
+                const logDate = new Date(o.date);
+                return logDate.getMonth() === overbreakMonthFilter && logDate.getFullYear() === overbreakYearFilter;
+            });
+
+            setFilteredOverbreaks(tempOverbreaks);
+        };
+        applyOverbreakFilter();
+    }, [overbreaks, overbreakEmployeeFilter, overbreakMonthFilter, overbreakYearFilter]);
 
 
     const handleAddUser = async (e: React.FormEvent) => {
@@ -338,8 +367,8 @@ export default function AdminPage() {
     };
 
     const handleExportOverbreaksPdf = () => {
-        if (overbreaks.length === 0) {
-            toast({ title: "No Data", description: "There are no overbreaks to export." });
+        if (filteredOverbreaks.length === 0) {
+            toast({ title: "No Data", description: "There are no overbreaks to export for the selected filters." });
             return;
         }
 
@@ -347,7 +376,7 @@ export default function AdminPage() {
         const tableColumn = ["Employee", "Date", "Start Time", "End Time", "Type", "Exceeded By (min)"];
         const tableRows: (string|number|null)[][] = [];
 
-        overbreaks.forEach(o => {
+        filteredOverbreaks.forEach(o => {
             const excessTime = o.duration && (o.duration - (o.action.includes('Break') ? 15 : 60));
             const logData = [
                 o.employeeName,
@@ -360,13 +389,15 @@ export default function AdminPage() {
             tableRows.push(logData);
         });
 
+        const monthName = MONTHS.find(m => m.value === overbreakMonthFilter)?.name;
+
         (doc as any).autoTable({
             head: [tableColumn],
             body: tableRows,
             startY: 20,
         });
-        doc.text("Overbreak Alerts Report", 14, 15);
-        doc.save(`Overbreaks_Report_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
+        doc.text(`Overbreak Alerts for ${monthName} ${overbreakYearFilter}`, 14, 15);
+        doc.save(`Overbreaks_Report_${monthName}_${overbreakYearFilter}.pdf`);
     };
 
     const handleCleanupUsers = async () => {
@@ -718,16 +749,49 @@ export default function AdminPage() {
                 </Card>
 
                 <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                    <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
-                        <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
-                            <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
-                        </CardTitle>
+                     <CardHeader className="flex flex-row items-start justify-between !p-0 !pb-6 gap-4">
+                        <div>
+                            <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
+                                <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
+                            </CardTitle>
+                             <DialogDescription>Filter overbreaks by employee and date range.</DialogDescription>
+                        </div>
                         <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
                             <FileDown className="mr-2 h-4 w-4" /> Download PDF
                         </Button>
                     </CardHeader>
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div>
+                            <Label>Employee</Label>
+                             <Select value={overbreakEmployeeFilter} onValueChange={setOverbreakEmployeeFilter}>
+                                <SelectTrigger><SelectValue placeholder="All Employees" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Employees</SelectItem>
+                                    {users.filter(u => u.role !== 'Administrator').map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Month</Label>
+                            <Select value={String(overbreakMonthFilter)} onValueChange={(val) => setOverbreakMonthFilter(Number(val))}>
+                                <SelectTrigger><SelectValue placeholder="Select Month" /></SelectTrigger>
+                                <SelectContent>
+                                    {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Year</Label>
+                                <Select value={String(overbreakYearFilter)} onValueChange={(val) => setOverbreakYearFilter(Number(val))}>
+                                <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
+                                <SelectContent>
+                                    {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                     <ScrollArea className="h-80 pr-4">
-                        {overbreaks.length === 0 ? <p className="text-center py-10 text-green-600">No overbreaks detected today.</p> :
+                        {filteredOverbreaks.length === 0 ? <p className="text-center py-10 text-green-600">No overbreaks found for the selected filters.</p> :
                          <Table>
                             <TableHeader>
                                 <TableRow>
@@ -739,7 +803,7 @@ export default function AdminPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                            {overbreaks.map(o => (
+                            {filteredOverbreaks.map(o => (
                                 <TableRow key={o.id} className="bg-red-50 border-red-500">
                                     <TableCell className="font-medium text-red-700">{o.employeeName}</TableCell>
                                     <TableCell className="text-red-600">{o.action.replace(' In', '')}</TableCell>

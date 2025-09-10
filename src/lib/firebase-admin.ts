@@ -53,18 +53,13 @@ export async function getAllActivityAction(): Promise<{ success: boolean, messag
 export async function getOverbreaksAction(): Promise<{ success: boolean, message: string, overbreaks?: ActivityLog[] }> {
     try {
         const db = getDb();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayTimestamp = today.getTime();
-
-        const overbreaksCol = db.collection('overbreaks')
-            .where("timestamp", ">=", todayTimestamp)
-            .orderBy('timestamp', 'desc');
+        
+        const overbreaksCol = db.collection('overbreaks').orderBy('timestamp', 'desc');
             
         const overbreaksSnapshot = await overbreaksCol.get();
 
         if (overbreaksSnapshot.empty) {
-            return { success: true, message: 'No overbreaks found for today.', overbreaks: [] };
+            return { success: true, message: 'No overbreaks found.', overbreaks: [] };
         }
 
         const overbreaksList = overbreaksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
