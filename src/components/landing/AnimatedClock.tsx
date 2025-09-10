@@ -18,7 +18,7 @@ export default function AnimatedClock() {
     // Generate styles only on the client, after the component has mounted
     const styles = hourMarkers.map((_, i) => {
         return {
-            '--delay': `${i * 0.1}s`,
+            '--delay': `${i * 0.025}s`, // Stagger the animation of each marker
             '--r-start': `0deg`
         };
     });
@@ -68,24 +68,24 @@ export default function AnimatedClock() {
         }
 
         .clock-face {
-          animation: drawCircle 1.5s cubic-bezier(0.5, 1, 0.5, 1) forwards;
+          animation: drawCircle 1s cubic-bezier(0.5, 1, 0.5, 1) forwards;
         }
         
         .hour-marker {
           transform-origin: center;
-          animation: assembleFromLine 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: assembleFromLine 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           animation-delay: var(--delay);
           opacity: 0;
         }
         
         .hand, .center-dot {
           transform-origin: center;
-          animation: assembleHand 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          animation: assembleHand 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
         
-        .hour-hand { animation-delay: 1.5s; }
-        .minute-hand { animation-delay: 1.7s; }
-        .center-dot { animation: fadeIn 0.5s ease-out 1.8s forwards; opacity: 0; }
+        .hour-hand { animation-delay: 0.5s; }
+        .minute-hand { animation-delay: 0.7s; }
+        .center-dot { animation: fadeIn 0.5s ease-out 0.8s forwards; opacity: 0; }
       `}</style>
       <svg
         viewBox="0 0 100 100"
@@ -116,7 +116,7 @@ export default function AnimatedClock() {
               className="hour-marker"
               style={{
                 // @ts-ignore
-                '--delay': `${i * 0.1}s`,
+                '--delay': `${i * 0.025}s`,
                 '--r-end': `${angle}deg`
               }}
             >
