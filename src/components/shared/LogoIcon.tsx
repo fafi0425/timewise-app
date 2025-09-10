@@ -17,9 +17,9 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
       className={cn(className)}
       {...props}
     >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-        <path d="M12 13l-2 7 4 0 -2 -7Z" fill="hsl(var(--secondary))" stroke="none" />
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+      <path d="M12 12l-2 7h4l-2 -7Z" fill="currentColor" stroke="none"/>
     </svg>
   )
 );
