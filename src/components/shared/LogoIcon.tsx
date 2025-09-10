@@ -11,24 +11,15 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={cn(className)}
       {...props}
     >
-      <defs>
-        <g id="fork">
-          <path d="M5 12h14" />
-          <path d="M6 12V2a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v10" />
-          <path d="M14 12V2a2 2 0 0 0-2-2h0a2 2 0 0 0-2 2v10" />
-        </g>
-        <g id="tie">
-           <path d="M12 13l-2 7 4 0 -2 -7Z" fill="hsl(var(--secondary))" stroke="none" />
-        </g>
-      </defs>
-      <use href="#fork" />
-      <use href="#tie" />
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+        <path d="M12 13l-2 7 4 0 -2 -7Z" fill="hsl(var(--secondary))" stroke="none" />
     </svg>
   )
 );

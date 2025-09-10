@@ -4,10 +4,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Clock, Crown, LogOut, User as UserIcon, LayoutDashboard, CalendarDays } from 'lucide-react';
+import { Crown, LogOut, User as UserIcon, LayoutDashboard, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import LogoIcon from './LogoIcon';
 
 export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
   const [time, setTime] = useState('');
@@ -94,7 +95,7 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
               {isAdmin ? (
                 <Crown className="text-white" />
               ) : (
-                <Clock className="text-white" />
+                <LogoIcon className="text-white h-7 w-7" />
               )}
             </div>
             <h1 className="text-2xl font-bold text-white font-headline">
