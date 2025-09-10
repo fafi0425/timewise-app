@@ -1,11 +1,11 @@
-
 import type { User, Shift, UserState } from './types';
 import { auth, db } from './firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   signOut,
-  sendEmailVerification
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
     collection, 
@@ -138,6 +138,20 @@ export const updateUserProfilePicture = async (userId: string, photoURL: string)
     await updateDoc(userRef, {
         photoURL: photoURL
     });
+};
+
+export const sendPasswordReset = async (email: string): Promise<void> => {
+    try {
+        await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+        console.error("Error sending password reset email:", error);
+        if (error.code === 'auth/user-not-found') {
+            // To avoid user enumeration, we don't reveal if the user exists or not.
+            // The success message will be shown regardless.
+            return;
+        }
+        throw new Error("Failed to send password reset email.");
+    }
 };
 
 export const signOutUser = async () => {

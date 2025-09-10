@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -118,9 +117,9 @@ export default function LoginForm() {
               Remember me
             </Label>
           </div>
-          <a href="#" className="text-sm font-medium text-primary hover:underline">
+          <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
             Forgot password?
-          </a>
+          </Link>
         </div>
 
         <Button

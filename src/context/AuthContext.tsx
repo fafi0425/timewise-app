@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -51,13 +50,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (loading) return;
 
     // Publicly accessible paths
-    const publicPaths = ['/login', '/register', '/'];
+    const publicPaths = ['/login', '/register', '/', '/forgot-password'];
 
     if (!user && !publicPaths.includes(pathname)) {
       router.push('/login');
     } else if (user) {
       // If user is logged in and on a public page (except the landing page), redirect them
-      if (publicPaths.slice(0,2).includes(pathname)) {
+      if (publicPaths.slice(0,2).includes(pathname) || pathname === '/forgot-password') {
         if (user.role === 'Administrator') {
           router.push('/admin');
         } else {
