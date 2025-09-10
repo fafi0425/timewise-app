@@ -377,10 +377,11 @@ export default function AdminPage() {
         const tableRows: (string|number|null)[][] = [];
 
         filteredOverbreaks.forEach(o => {
-            const excessTime = o.duration && (o.duration - (o.action.includes('Break') ? 15 : 60));
+            const excessTime = o.duration && (o.action.includes('Break') ? 15 : 60);
+            const logDate = new Date(o.timestamp).toLocaleDateString('en-US');
             const logData = [
                 o.employeeName,
-                o.date,
+                logDate,
                 o.startTime || 'N/A',
                 o.endTime || 'N/A',
                 o.action.replace(' In', ''),
