@@ -15,15 +15,14 @@ export default function AnimatedClock() {
   const circleCircumference = 2 * Math.PI * 48; // 2 * pi * r
 
   useEffect(() => {
-    // Generate styles only on the client, after the component has mounted
     const styles = hourMarkers.map((_, i) => {
         return {
-            '--delay': `${i * 0.025}s`, // Stagger the animation of each marker
+            '--delay': `0s`,
             '--r-start': `0deg`
         };
     });
     setMarkerStyles(styles);
-  }, []); // Empty dependency array ensures this runs only once on the client
+  }, []); 
 
   return (
     <div className="relative w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] xl:w-[500px] xl:h-[500px]">
@@ -37,17 +36,14 @@ export default function AnimatedClock() {
         @keyframes assembleFromLine {
           0% {
             opacity: 0;
-            /* Start from top-left corner, relative to the SVG center */
             transform: translate(-100px, -100px) scale(0.5) rotate(-90deg);
           }
           40% {
             opacity: 1;
-            /* Form a horizontal line */
             transform: translate(0, 0) scale(0.8) rotate(0deg);
           }
           100% {
             opacity: 1;
-            /* End in final position */
             transform: translate(0, 0) scale(1) rotate(var(--r-end));
           }
         }
@@ -68,31 +64,30 @@ export default function AnimatedClock() {
         }
 
         .clock-face {
-          animation: drawCircle 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          animation: drawCircle 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
         
         .hour-marker {
           transform-origin: center;
-          animation: assembleFromLine 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          animation: assembleFromLine 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
           animation-delay: var(--delay);
           opacity: 0;
         }
         
         .hand, .center-dot {
           transform-origin: center;
-          animation: assembleHand 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          animation: assembleHand 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
         
-        .hour-hand { animation-delay: 0.5s; }
-        .minute-hand { animation-delay: 0.7s; }
-        .center-dot { animation: fadeIn 0.5s ease-out 0.8s forwards; opacity: 0; }
+        .hour-hand { animation-delay: 0.75s; }
+        .minute-hand { animation-delay: 1s; }
+        .center-dot { animation: fadeIn 0.5s ease-out 1.2s forwards; opacity: 0; }
       `}</style>
       <svg
         viewBox="0 0 100 100"
         className="w-full h-full"
         style={{ filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))' }}
       >
-        {/* Clock Face with line drawing animation */}
         <circle
           className="clock-face"
           cx="50"
@@ -106,7 +101,6 @@ export default function AnimatedClock() {
           transform="rotate(-90 50 50)"
         />
 
-        {/* Hour Markers */}
         {markerStyles.length > 0 && hourMarkers.map((hour, i) => {
           const angle = hour * 30;
 
@@ -133,7 +127,6 @@ export default function AnimatedClock() {
           )
         })}
 
-        {/* Hour Hand */}
         <line
           className="hand hour-hand"
           x1="50"
@@ -148,7 +141,6 @@ export default function AnimatedClock() {
             '--r-start': '-120deg', '--r-end': '150deg' 
             }}
         />
-        {/* Minute Hand */}
         <line
           className="hand minute-hand"
           x1="50"
@@ -164,7 +156,6 @@ export default function AnimatedClock() {
             }}
         />
 
-         {/* Center dot */}
          <circle cx="50" cy="50" r="3" fill="hsl(var(--primary-foreground))" className="center-dot" />
 
       </svg>

@@ -91,12 +91,12 @@
   }
 
   .animate-slide-in-from-left {
-    animation: slide-in-from-left 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation: slide-in-from-left 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     opacity: 0;
   }
   
    .animate-slide-in-from-right {
-    animation: slide-in-from-right 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation: slide-in-from-right 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     opacity: 0;
   }
   
