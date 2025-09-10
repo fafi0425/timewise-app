@@ -115,3 +115,40 @@ firebase deploy
 ```
 
 After the command finishes, the CLI will provide you with your public Hosting URL. Congratulations, your application is live!
+
+
+## Deploying with Vercel (Free Node.js Hosting)
+
+Vercel is a platform from the creators of Next.js that allows for easy, free deployment of Node.js applications.
+
+### Step 1: Push Your Code to a Git Repository
+
+Vercel deploys directly from a Git repository (like GitHub, GitLab, or Bitbucket).
+
+1.  **Create a GitHub Repository:** Go to [GitHub](https://github.com) and create a new, empty repository. Do not add a README or .gitignore file from the GitHub interface.
+2.  **Initialize Git in Your Project:** Open your terminal in the project's root directory and run:
+    ```bash
+    git init -b main
+    git add .
+    git commit -m "Initial commit"
+    ```
+3.  **Connect and Push:** Follow the instructions on your new GitHub repository page to connect your local project and push your code. The commands will look something like this:
+    ```bash
+    git remote add origin <YOUR_GITHUB_REPOSITORY_URL>
+    git push -u origin main
+    ```
+
+### Step 2: Deploy on Vercel
+
+1.  **Sign Up for Vercel:** Go to [Vercel.com](https://vercel.com) and sign up for a new account using your GitHub account. The free "Hobby" plan is perfect for this project.
+2.  **Import Your Project:** From your Vercel dashboard, click "Add New..." -> "Project".
+3.  **Import Git Repository:** Vercel will show your GitHub repositories. Find the one you just created and click "Import".
+4.  **Configure Project:**
+    *   Vercel will automatically detect that this is a Next.js project. You do not need to change any build settings.
+    *   Expand the "Environment Variables" section.
+    *   Add a new variable:
+        *   **Name:** `GEMINI_API_KEY`
+        *   **Value:** Paste your Gemini API key here (the same one from your `.env` file).
+5.  **Deploy:** Click the "Deploy" button.
+
+Vercel will now build and deploy your application. After a few moments, it will provide you with a public URL where your live site can be accessed. Any time you push new changes to your `main` branch on GitHub, Vercel will automatically redeploy the application for you.
