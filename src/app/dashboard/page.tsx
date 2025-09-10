@@ -60,6 +60,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+             <StatusCard status={status} countdown={countdown} />
              <div className="grid sm:grid-cols-3 gap-8">
                <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
                 <CardContent className="text-center pt-6">
@@ -108,7 +109,6 @@ export default function DashboardPage() {
           </div>
           
           <div className="space-y-8">
-            <StatusCard status={status} countdown={countdown} />
             <SummaryCard summary={summary} />
             <OnBreakList />
           </div>
