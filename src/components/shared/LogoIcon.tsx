@@ -16,8 +16,8 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
         <path id="text-path" d="M 60 100 A 40 40 0 1 1 140 100" />
       </defs>
       
-      {/* Clock outline */}
-      <circle cx="100" cy="100" r="90" stroke="#3282B8" strokeWidth="5" fill="none" />
+      {/* Clock background and outline */}
+      <circle cx="100" cy="100" r="90" stroke="#3282B8" strokeWidth="5" fill="white" />
       
       {/* Clock ticks */}
       {Array.from({ length: 60 }).map((_, i) => {
