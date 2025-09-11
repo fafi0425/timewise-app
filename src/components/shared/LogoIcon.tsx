@@ -9,27 +9,37 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
     <svg
       ref={ref}
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 200 50" // Adjusted viewBox for a more horizontal logo
+      viewBox="0 0 200 50"
       className={cn(className)}
       {...props}
     >
+      {/*
+        You can replace everything inside this <svg> tag with your own SVG code.
+        Make sure your SVG has a viewBox attribute that fits its design.
+      */}
       <style>
         {`
           .logo-text {
             font-family: var(--font-headline, sans-serif);
             font-size: 38px;
             font-weight: 700;
-            fill: #0F4C75; /* pantone-blue-1 from your theme */
+            fill: #0F4C75; /* pantone-blue-1 */
           }
           .fork-icon-path {
-            fill: #2E8B57; /* pantone-green-2 from your theme */
+            stroke: #2E8B57; /* pantone-green-2 */
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
           }
         `}
       </style>
       
+      {/* Background */}
       <rect width="200" height="50" rx="10" fill="#98FB98" />
 
-      <text x="0" y="38" className="logo-text">
+      {/* Text "TIME W" */}
+      <text x="5" y="38" className="logo-text">
         TIME W
       </text>
       
@@ -38,14 +48,10 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
         <path
           className="fork-icon-path"
           d="M6,1 C6,1 6,5 6,7 C6,11 3,12 3,16 L3,28 L9,28 L9,16 C9,12 6,11 6,7 M3,1 L3,6 M9,1 L9,6 M6,1 L6,6"
-          stroke="#2E8B57"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
         />
       </g>
 
+      {/* Text "SE" */}
       <text x="157" y="38" className="logo-text">
         SE
       </text>
