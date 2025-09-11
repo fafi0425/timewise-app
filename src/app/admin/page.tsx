@@ -15,6 +15,8 @@ import AuthCheck from '@/components/shared/AuthCheck';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import OnShiftList from '@/components/dashboard/OnShiftList';
 import ShiftManager from '@/components/admin/ShiftManager';
+import UserManagementCard from '@/components/admin/UserManagementCard';
+import OverbreaksAlertCard from '@/components/admin/OverbreaksAlertCard';
 import {
   Dialog,
   DialogContent,
@@ -532,17 +534,17 @@ export default function AdminPage() {
                 <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">Export Break Logs</CardTitle>
                 <div className="grid md:grid-cols-3 gap-4 mb-6">
                     <div>
-                        <Label>From Date</Label>
-                        <Input type="date" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} />
+                        <Label htmlFor="from-date">From Date</Label>
+                        <Input id="from-date" type="date" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} />
                     </div>
                     <div>
-                        <Label>To Date</Label>
-                        <Input type="date" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} />
+                        <Label htmlFor="to-date">To Date</Label>
+                        <Input id="to-date" type="date" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} />
                     </div>
                      <div>
-                        <Label>Employee</Label>
+                        <Label htmlFor="employee-filter">Employee</Label>
                         <Select value={filterEmployee} onValueChange={setFilterEmployee}>
-                            <SelectTrigger><SelectValue placeholder="All Employees" /></SelectTrigger>
+                            <SelectTrigger id="employee-filter"><SelectValue placeholder="All Employees" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Employees</SelectItem>
                                 {users.map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
@@ -566,27 +568,27 @@ export default function AdminPage() {
                     <div className="flex flex-col gap-4 md:flex-row">
                         <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 gap-4 flex-grow">
                             <div>
-                                <Label>Employee</Label>
+                                <Label htmlFor="timesheet-employee">Employee</Label>
                                 <Select value={selectedTimesheetUser} onValueChange={setSelectedTimesheetUser}>
-                                    <SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger>
+                                    <SelectTrigger id="timesheet-employee"><SelectValue placeholder="Select Employee" /></SelectTrigger>
                                     <SelectContent>
                                         {users.filter(u => u.role !== 'Administrator').map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label>Month</Label>
+                                <Label htmlFor="timesheet-month">Month</Label>
                                 <Select value={String(selectedMonth)} onValueChange={(val) => setSelectedMonth(Number(val))}>
-                                    <SelectTrigger><SelectValue placeholder="Select Month" /></SelectTrigger>
+                                    <SelectTrigger id="timesheet-month"><SelectValue placeholder="Select Month" /></SelectTrigger>
                                     <SelectContent>
                                         {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label>Year</Label>
+                                <Label htmlFor="timesheet-year">Year</Label>
                                  <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
-                                    <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
+                                    <SelectTrigger id="timesheet-year"><SelectValue placeholder="Select Year" /></SelectTrigger>
                                     <SelectContent>
                                         {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                                     </SelectContent>
@@ -650,173 +652,37 @@ export default function AdminPage() {
 
 
             <div className="grid grid-cols-1 gap-6 mb-8">
-                 <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                    <CardHeader className="flex flex-row items-center justify-between !p-0 !pb-6">
-                     <CardTitle className="text-xl font-semibold text-card-foreground font-headline">User Management</CardTitle>
-                    </CardHeader>
-                     <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
-                        <div>
-                            <h4 className="font-medium text-card-foreground mb-4">Add New User</h4>
-                            <form onSubmit={handleAddUser} className="space-y-4">
-                                <Input value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Full Name" required />
-                                <Input value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} type="email" placeholder="Email" required />
-                                <Select value={newUserDepartment} onValueChange={setNewUserDepartment}>
-                                    <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Dealing">Dealing</SelectItem>
-                                        <SelectItem value="CS/KYC">CS/KYC</SelectItem>
-                                        <SelectItem value="Admin">Admin</SelectItem>
-                                        <SelectItem value="Team Leader">Team Leader</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                 <Select value={newUserRole} onValueChange={setNewUserRole}>
-                                    <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Manager">Manager</SelectItem>
-                                        <SelectItem value="Team Leader">Team Leader</SelectItem>
-                                        <SelectItem value="HR">HR</SelectItem>
-                                        <SelectItem value="Employee">Employee</SelectItem>
-                                        <SelectItem value="Administrator">Administrator</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <Select value={newUserShift} onValueChange={(val) => setNewUserShift(val as Shift)}>
-                                    <SelectTrigger><SelectValue placeholder="Select Shift" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">No Shift</SelectItem>
-                                        {Object.entries(SHIFTS).map(([key, {name}]) => (
-                                            <SelectItem key={key} value={key}>{name}</SelectItem>
-                                        ))}
-                                         <Separator className="my-2" />
-                                        <SelectItem value="unpaid_leave">Unpaid Leave</SelectItem>
-                                        <SelectItem value="sick_leave">Sick Leave</SelectItem>
-                                        <SelectItem value="vacation_leave">Vacation Leave</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <Input value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} type="password" placeholder="Password" required />
-                                <Button type="submit" className="w-full" variant="secondary"><UserPlus className="mr-2 h-4 w-4"/>Add User</Button>
-                            </form>
-                        </div>
-                         <div>
-                            <h4 className="font-medium text-card-foreground mb-4">Registered Users</h4>
-                            <ScrollArea className="h-72 pr-4">
-                            {users.length === 0 ? (
-                                <div className="flex justify-center items-center h-full">
-                                    <LoaderCircle className="animate-spin text-primary" />
-                                </div>
-                            ) : (
-                            <div className="space-y-2">
-                               {users.map(user => (
-                                   <div key={user.uid} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                                       <div className="flex items-center gap-3">
-                                           <Avatar>
-                                                <AvatarImage src={user.photoURL} alt={user.name} />
-                                                <AvatarFallback>
-                                                    {user.name.split(' ').map(n => n[0]).join('')}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                           <div>
-                                               <div className="font-medium text-card-foreground">{user.name}</div>
-                                               <div className="text-sm text-muted-foreground">{user.email}</div>
-                                                <div className="text-xs text-muted-foreground mt-1 space-x-1">
-                                                    <span className="bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full text-xs">{user.department}</span>
-                                                    <span className="bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{user.role}</span>
-                                                     {user.shift && user.shift !== 'none' && user.role !== 'Administrator' && 
-                                                        <span className={`px-2 py-0.5 rounded-full text-xs ${user.shift.includes('leave') ? 'bg-pantone-blue-2 text-white' : 'bg-accent/80 text-accent-foreground'}`}>
-                                                            {SHIFTS[user.shift as Exclude<Shift, 'custom' | 'none' | 'unpaid_leave' | 'sick_leave' | 'vacation_leave'>]?.name || user.shift.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                                        </span>
-                                                     }
-                                                </div>
-                                           </div>
-                                       </div>
-                                        <div className="flex items-center gap-1">
-                                         <Button variant="outline" size="icon" onClick={() => openEditShiftModal(user)} className="text-primary hover:bg-primary/10" disabled={user.role === 'Administrator'}>
-                                            <Clock className="h-4 w-4" />
-                                         </Button>
-                                         <Button variant="outline" size="icon" onClick={() => openEditUserModal(user)} className="text-primary hover:bg-primary/10">
-                                            <Edit2 className="h-4 w-4" />
-                                         </Button>
-                                         <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.uid)} className="text-destructive hover:bg-destructive/10" disabled={user.role === 'Administrator'}>
-                                             <Trash2 className="h-4 w-4" />
-                                         </Button>
-                                        </div>
-                                   </div>
-                               ))}
-                            </div>
-                            )}
-                            </ScrollArea>
-                        </div>
-                     </div>
-                </Card>
-
-                <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6">
-                     <CardHeader className="flex flex-row items-start justify-between !p-0 !pb-6 gap-4">
-                        <div>
-                            <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
-                                <AlertTriangle className="mr-2 h-5 w-5 text-destructive" /> Overbreaks Alert
-                            </CardTitle>
-                             <p className="text-sm text-muted-foreground">Filter overbreaks by employee and date range.</p>
-                        </div>
-                        <Button variant="destructive" onClick={handleExportOverbreaksPdf} size="sm">
-                            <FileDown className="mr-2 h-4 w-4" /> Download PDF
-                        </Button>
-                    </CardHeader>
-                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div>
-                            <Label>Employee</Label>
-                             <Select value={overbreakEmployeeFilter} onValueChange={setOverbreakEmployeeFilter}>
-                                <SelectTrigger><SelectValue placeholder="All Employees" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Employees</SelectItem>
-                                    {users.filter(u => u.role !== 'Administrator').map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Month</Label>
-                            <Select value={String(overbreakMonthFilter)} onValueChange={(val) => setOverbreakMonthFilter(Number(val))}>
-                                <SelectTrigger><SelectValue placeholder="Select Month" /></SelectTrigger>
-                                <SelectContent>
-                                    {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Year</Label>
-                                <Select value={String(overbreakYearFilter)} onValueChange={(val) => setOverbreakYearFilter(Number(val))}>
-                                <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
-                                <SelectContent>
-                                    {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <ScrollArea className="h-80 pr-4">
-                        {filteredOverbreaks.length === 0 ? <p className="text-center py-10 text-green-600">No overbreaks found for the selected filters.</p> :
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Employee</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Start</TableHead>
-                                    <TableHead>End</TableHead>
-                                    <TableHead>Exceeded</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                            {filteredOverbreaks.map(o => (
-                                <TableRow key={o.id} className="bg-red-50 border-red-500">
-                                    <TableCell className="font-medium text-red-700">{o.employeeName}</TableCell>
-                                    <TableCell className="text-red-600">{o.action.replace(' In', '')}</TableCell>
-                                    <TableCell className="text-red-600">{o.startTime || 'N/A'}</TableCell>
-                                    <TableCell className="text-red-600">{o.endTime || 'N/A'}</TableCell>
-                                    <TableCell className="text-red-600 font-bold">{o.duration ? (o.duration - (o.action.includes('Break') ? 15 : 60)) : 0} min</TableCell>
-                                </TableRow>
-                            ))}
-                            </TableBody>
-                         </Table>
-                        }
-                    </ScrollArea>
-                </Card>
+                <UserManagementCard
+                    users={users}
+                    newUserName={newUserName}
+                    setNewUserName={setNewUserName}
+                    newUserEmail={newUserEmail}
+                    setNewUserEmail={setNewUserEmail}
+                    newUserDepartment={newUserDepartment}
+                    setNewUserDepartment={setNewUserDepartment}
+                    newUserRole={newUserRole}
+                    setNewUserRole={setNewUserRole}
+                    newUserShift={newUserShift}
+                    setNewUserShift={setNewUserShift}
+                    newUserPassword={newUserPassword}
+                    setNewUserPassword={setNewUserPassword}
+                    handleAddUser={handleAddUser}
+                    handleDeleteUser={handleDeleteUser}
+                    openEditShiftModal={openEditShiftModal}
+                    openEditUserModal={openEditUserModal}
+                />
+                
+                <OverbreaksAlertCard 
+                    users={users}
+                    filteredOverbreaks={filteredOverbreaks}
+                    employeeFilter={overbreakEmployeeFilter}
+                    setEmployeeFilter={setOverbreakEmployeeFilter}
+                    monthFilter={overbreakMonthFilter}
+                    setMonthFilter={setOverbreakMonthFilter}
+                    yearFilter={overbreakYearFilter}
+                    setYearFilter={setOverbreakYearFilter}
+                    onExportPdf={handleExportOverbreaksPdf}
+                />
             </div>
             
             <div className="grid lg:grid-cols-2 gap-6 mb-8">
@@ -971,7 +837,7 @@ export default function AdminPage() {
                     </div>
                      <div>
                         <Label htmlFor="edit-photo">Photo URL</Label>
-                        <Input id="edit-photo" value={editingUser.photoURL} onChange={e => setEditingUser({...editingUser, photoURL: e.target.value})} />
+                        <Input id="edit-photo" value={editingUser.photoURL || ''} onChange={e => setEditingUser({...editingUser, photoURL: e.target.value})} />
                     </div>
                     <div>
                         <Label htmlFor="edit-department">Department</Label>
