@@ -14,8 +14,15 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
       {...props}
     >
       {/*
-        You can replace everything inside this <svg> tag with your own SVG code.
-        Make sure your SVG has a viewBox attribute that fits its design.
+        ======================================================================
+        ===                                                                ===
+        ===  PASTE YOUR SVG CODE HERE.                                     ===
+        ===  You can delete everything from this comment block down to     ===
+        ===  the next comment block and replace it with your SVG content.  ===
+        ===  Make sure your SVG has a `viewBox` attribute that fits its    ===
+        ===  design for proper scaling.                                    ===
+        ===                                                                ===
+        ======================================================================
       */}
       <style>
         {`
@@ -55,7 +62,13 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
       <text x="157" y="38" className="logo-text">
         SE
       </text>
-
+      {/*
+        ======================================================================
+        ===                                                                ===
+        ===  END OF SVG CONTENT AREA.                                      ===
+        ===                                                                ===
+        ======================================================================
+      */}
     </svg>
   )
 );
