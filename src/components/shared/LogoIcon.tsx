@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +27,8 @@ const LogoIcon = React.forwardRef<SVGSVGElement, LogoIconProps>(
         `}
       </style>
       
+      <rect width="200" height="50" rx="10" fill="#98FB98" />
+
       <text x="0" y="38" className="logo-text">
         TIME W
       </text>
