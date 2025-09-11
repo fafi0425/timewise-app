@@ -1,6 +1,5 @@
-
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback }from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -378,7 +377,7 @@ export default function AdminPage() {
 
         filteredOverbreaks.forEach(o => {
             const excessTime = o.duration && (o.action.includes('Break') ? 15 : 60);
-            const logDate = new Date(o.timestamp).toLocaleDateString('en-US');
+            const logDate = new Date(o.timestamp).toLocaleDateString('en-CA', {timeZone: 'UTC'});
             const logData = [
                 o.employeeName,
                 logDate,
@@ -904,9 +903,9 @@ export default function AdminPage() {
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
+                                <p className="text-sm text-muted-foreground">
                                     This action cannot be undone. This will permanently delete all activity logs and overbreak alerts from the database.
-                                </AlertDialogDescription>
+                                </p>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
