@@ -32,6 +32,7 @@ export default function useTimeTracker() {
     isWarning: false,
     isDanger: false,
   });
+  const [isOverbreakAlertOpen, setOverbreakAlertOpen] = useState(false);
 
   const fetchUserState = useCallback(async () => {
     if (user) {
@@ -174,6 +175,7 @@ export default function useTimeTracker() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
+    let alertShown = false;
     const BREAK_TIME_LIMIT_SECS = 15 * 60;
     const LUNCH_TIME_LIMIT_SECS = 60 * 60;
     let timeLimit = 0;
@@ -201,6 +203,10 @@ export default function useTimeTracker() {
                 isWarning: false,
                 isDanger: true
             });
+            if (!isOverbreakAlertOpen && !alertShown) {
+                setOverbreakAlertOpen(true);
+                alertShown = true;
+            }
             return;
         }
 
@@ -223,7 +229,7 @@ export default function useTimeTracker() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [status.currentState, status.breakStartTime, status.lunchStartTime]);
+  }, [status.currentState, status.breakStartTime, status.lunchStartTime, isOverbreakAlertOpen]);
 
   const summary = {
     totalBreakTime: status.totalBreakMinutes,
@@ -231,5 +237,5 @@ export default function useTimeTracker() {
     totalWorkTime: `${Math.floor((480 - status.totalBreakMinutes - status.totalLunchMinutes) / 60)}h ${ (480 - status.totalBreakMinutes - status.totalLunchMinutes) % 60}m`
   }
 
-  return { status, summary, countdown, startAction, endAction, clockIn, clockOut };
+  return { status, summary, countdown, startAction, endAction, clockIn, clockOut, isOverbreakAlertOpen, setOverbreakAlertOpen };
 }

@@ -18,10 +18,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { getAllUsersAction } from '@/lib/firebase-admin';
 import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import OverbreakAlert from '@/components/dashboard/OverbreakAlert';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { status, summary, countdown, startAction, endAction, clockIn, clockOut } = useTimeTracker();
+  const { status, summary, countdown, startAction, endAction, clockIn, clockOut, isOverbreakAlertOpen, setOverbreakAlertOpen } = useTimeTracker();
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { toast } = useToast();
@@ -115,6 +116,7 @@ export default function DashboardPage() {
         </div>
         
          <StatisticsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} />
+         <OverbreakAlert isOpen={isOverbreakAlertOpen} onAcknowledge={() => setOverbreakAlertOpen(false)} />
       </main>
     </AuthCheck>
   );
