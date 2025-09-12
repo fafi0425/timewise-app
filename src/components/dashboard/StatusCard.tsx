@@ -24,11 +24,11 @@ export default function StatusCard({ status, countdown }: StatusCardProps) {
       case 'lunch':
         return 'At Lunch';
       case 'working':
-        return 'Working';
+        return 'Available';
       case 'clocked_out':
-        return 'Clocked Out';
+        return 'Available';
       default:
-        return 'Working';
+        return 'Available';
     }
   };
 
@@ -43,9 +43,9 @@ export default function StatusCard({ status, countdown }: StatusCardProps) {
         case 'lunch':
             return formatTime(status.lunchStartTime);
         case 'working':
-            return 'Currently on the clock';
+            return 'Ready for break or lunch.';
         case 'clocked_out':
-            return 'Session has not started';
+            return 'Ready for break or lunch.';
     }
   };
 
@@ -56,8 +56,8 @@ export default function StatusCard({ status, countdown }: StatusCardProps) {
         <div
           className={cn(
             'w-4 h-4 rounded-full animate-pulse',
-            status.isClockedIn && status.currentState === 'working' ? 'bg-green-500' : 
-            status.isClockedIn ? 'bg-yellow-500' : 'bg-red-500'
+            status.currentState === 'working' ? 'bg-green-500' : 
+            status.isClockedIn ? 'bg-yellow-500' : 'bg-green-500' // Show green when not on break/lunch
           )}
         />
       </CardHeader>

@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import type { UserState, ActivityLog, User, TimesheetEntry, TimesheetAction } from '@/lib/types';
+import type { UserState, ActivityLog, User, TimesheetAction } from '@/lib/types';
 import { useToast } from './use-toast';
 import { db } from '@/lib/firebase';
 import { 
@@ -14,17 +14,19 @@ import {
 } from 'firebase/firestore';
 import { getUserState, updateUserStateInFirestore, logActivity as logActivityServer, logTimesheetEvent as logTimesheetEventServer, logOverbreak as logOverbreakServer } from '@/lib/firebase-server-actions';
 
+const defaultUserState: UserState = {
+  currentState: 'clocked_out',
+  isClockedIn: false,
+  breakStartTime: null,
+  lunchStartTime: null,
+  totalBreakMinutes: 0,
+  totalLunchMinutes: 0,
+};
+
 export default function useTimeTracker() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [status, setStatus] = useState<UserState>({
-    currentState: 'clocked_out',
-    isClockedIn: false,
-    breakStartTime: null,
-    lunchStartTime: null,
-    totalBreakMinutes: 0,
-    totalLunchMinutes: 0,
-  });
+  const [status, setStatus] = useState<UserState>(defaultUserState);
   const [countdown, setCountdown] = useState({
     display: '00:00',
     progress: 100,
@@ -39,6 +41,9 @@ export default function useTimeTracker() {
       const state = await getUserState(user.uid);
       if (state) {
         setStatus(state);
+      } else {
+        // If no state exists in the database for the user, default to clocked out.
+        setStatus(defaultUserState);
       }
     }
   }, [user]);
@@ -234,7 +239,7 @@ export default function useTimeTracker() {
   const summary = {
     totalBreakTime: status.totalBreakMinutes,
     totalLunchTime: status.totalLunchMinutes,
-    totalWorkTime: `${Math.floor((480 - status.totalBreakMinutes - status.totalLunchMinutes) / 60)}h ${ (480 - status.totalBreakMinutes - status.totalLunchMinutes) % 60}m`
+    totalWorkTime: 'N/A' // This is no longer tracked
   }
 
   return { status, summary, countdown, startAction, endAction, clockIn, clockOut, isOverbreakAlertOpen, setOverbreakAlertOpen };

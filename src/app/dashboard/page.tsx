@@ -22,7 +22,7 @@ import OverbreakAlert from '@/components/dashboard/OverbreakAlert';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { status, summary, countdown, startAction, endAction, clockIn, clockOut, isOverbreakAlertOpen, setOverbreakAlertOpen } = useTimeTracker();
+  const { status, summary, countdown, startAction, endAction, isOverbreakAlertOpen, setOverbreakAlertOpen } = useTimeTracker();
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { toast } = useToast();
@@ -62,44 +62,19 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
              <StatusCard status={status} countdown={countdown} />
-             <div className="grid sm:grid-cols-3 gap-8">
-               <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl">
-                <CardContent className="text-center pt-6">
-                  <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
-                     <Clock className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-card-foreground mb-4 font-headline">Time Clock</h3>
-                  <div className="space-y-3">
-                     <Button
-                        onClick={clockIn}
-                        className="w-full font-semibold py-6 rounded-xl transition-all duration-300 transform hover:scale-105 bg-accent hover:bg-accent/90"
-                        disabled={status.isClockedIn}
-                     >
-                        Clock In
-                     </Button>
-                     <Button
-                        onClick={clockOut}
-                        variant="outline"
-                        className="w-full font-semibold py-6 rounded-xl transition-all duration-300 transform hover:scale-105"
-                        disabled={!status.isClockedIn || status.currentState !== 'working'}
-                     >
-                        Clock Out
-                     </Button>
-                  </div>
-                </CardContent>
-               </Card>
+             <div className="grid sm:grid-cols-2 gap-8">
               <ActionCard
                 type="break"
                 onStart={() => startAction('break')}
                 onEnd={() => endAction('break')}
-                disabled={!status.isClockedIn || status.currentState !== 'working'}
+                disabled={status.currentState !== 'working'}
                 isActive={status.currentState === 'break'}
               />
               <ActionCard
                 type="lunch"
                 onStart={() => startAction('lunch')}
                 onEnd={() => endAction('lunch')}
-                disabled={!status.isClockedIn || status.currentState !== 'working'}
+                disabled={status.currentState !== 'working'}
                 isActive={status.currentState === 'lunch'}
               />
             </div>
