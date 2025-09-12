@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import type { UserState, ActivityLog, User, TimesheetEntry, TimesheetAction } from '@/lib/types';
+import type { UserState, ActivityLog, User, TimesheetAction } from '@/lib/types';
 import { useToast } from './use-toast';
 import { db } from '@/lib/firebase';
 import { 
@@ -239,7 +239,7 @@ export default function useTimeTracker() {
   const summary = {
     totalBreakTime: status.totalBreakMinutes,
     totalLunchTime: status.totalLunchMinutes,
-    totalWorkTime: `${Math.floor((480 - status.totalBreakMinutes - status.totalLunchMinutes) / 60)}h ${ (480 - status.totalBreakMinutes - status.totalLunchMinutes) % 60}m`
+    totalWorkTime: 'N/A' // This is no longer tracked
   }
 
   return { status, summary, countdown, startAction, endAction, clockIn, clockOut, isOverbreakAlertOpen, setOverbreakAlertOpen };

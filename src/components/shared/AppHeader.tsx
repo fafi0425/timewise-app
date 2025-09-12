@@ -28,12 +28,6 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
     if (pathname === '/dashboard') {
         return (
             <>
-                <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 hidden sm:flex">
-                    <Link href="/timesheet">
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        My Timesheet
-                    </Link>
-                </Button>
                  <Button asChild variant="ghost" className="bg-white/20 hover-bg-white/30 text-white px-4 py-2">
                     <Link href="/profile">
                         <UserIcon className="mr-2 h-4 w-4" />
@@ -43,25 +37,6 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
             </>
         );
     }
-
-     if (pathname === '/timesheet') {
-         return (
-             <>
-                <Button asChild variant="ghost" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 hidden sm:flex">
-                    <Link href="/dashboard">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
-                    </Link>
-                </Button>
-                 <Button asChild variant="ghost" className="bg-white/20 hover-bg-white/30 text-white px-4 py-2">
-                    <Link href="/profile">
-                        <UserIcon className="mr-2 h-4 w-4" />
-                        My Profile
-                    </Link>
-                </Button>
-            </>
-         );
-    }
     
     if (pathname === '/profile') {
         return (
@@ -70,12 +45,6 @@ export default function AppHeader({ isAdmin = false }: { isAdmin?: boolean }) {
                     <Link href="/dashboard">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         Dashboard
-                    </Link>
-                </Button>
-                 <Button asChild variant="ghost" className="bg-white/20 hover-bg-white/30 text-white px-4 py-2">
-                    <Link href="/timesheet">
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        My Timesheet
                     </Link>
                 </Button>
             </>

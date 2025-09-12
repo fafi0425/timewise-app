@@ -24,10 +24,6 @@ export default function SummaryCard({ summary }: SummaryCardProps) {
           <span className="text-muted-foreground">Lunch Time:</span>
           <span className="font-semibold text-card-foreground">{summary.totalLunchTime} min</span>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="text-muted-foreground">Work Time:</span>
-          <span className="font-semibold text-green-600">{summary.totalWorkTime}</span>
-        </div>
       </CardContent>
     </Card>
   );

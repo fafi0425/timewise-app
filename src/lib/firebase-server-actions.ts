@@ -49,20 +49,11 @@ export async function logActivity(
 }
 
 export async function logTimesheetEvent(user: User, action: TimesheetAction) {
-    if (!user) {
-        console.error("User not authenticated, cannot log timesheet event.");
-        return;
+    // This function is now a no-op to prevent logging timesheet events.
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Timesheet event logging is disabled. Blocked event: ${action} for ${user.name}`);
     }
-    const db = getDb();
-    const newEntry = {
-      uid: user.uid,
-      employeeName: user.name,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      action,
-      timestamp: Date.now()
-    };
-    await db.collection('timesheet').add(newEntry);
+    return;
 }
 
 export async function logOverbreak(logData: Omit<ActivityLog, 'id'>) {

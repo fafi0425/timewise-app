@@ -48,31 +48,3 @@ export interface UserState {
 }
 
 export type Shift = 'morning' | 'mid' | 'night' | 'custom' | 'none' | 'unpaid_leave' | 'sick_leave' | 'vacation_leave';
-
-
-// Schemas for Timesheet Processing
-export const ProcessTimesheetInputSchema = z.object({
-  timesheetEntries: z.array(z.any()).describe('An array of raw timesheet entries for a user.'),
-  shift: z.custom<Shift>().describe("The user's assigned shift (morning, mid, night, or custom)."),
-  shiftStart: z.string().optional().describe('The custom start time for the shift (HH:MM), required if shift is custom.'),
-  shiftEnd: z.string().optional().describe('The custom end time for the shift (HH:MM), required if shift is custom.'),
-});
-export type ProcessTimesheetInput = z.infer<typeof ProcessTimesheetInputSchema>;
-
-export const ProcessedDaySchema = z.object({
-    date: z.string(),
-    clockIn: z.string(),
-    clockOut: z.string(),
-    late: z.string(),
-    undertime: z.string(),
-    regularHours: z.string(),
-    otHours: z.string(),
-    totalHours: z.string(),
-});
-export type ProcessedDay = z.infer<typeof ProcessedDaySchema>;
-
-
-export const ProcessTimesheetOutputSchema = z.object({
-  processedDays: z.array(ProcessedDaySchema).describe('An array of processed daily timesheet data.'),
-});
-export type ProcessTimesheetOutput = z.infer<typeof ProcessTimesheetOutputSchema>;

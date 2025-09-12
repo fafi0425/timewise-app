@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback }from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { addUser, deleteUser, updateUser } from '@/lib/auth';
 import { getAllUsersAction, getAllActivityAction, getOverbreaksAction } from '@/lib/firebase-admin';
-import type { User, ActivityLog, Shift, ProcessedDay, TimesheetEntry } from '@/lib/types';
+import type { User, ActivityLog, Shift } from '@/lib/types';
 import { Users, BarChart3, Coffee, Utensils, FileDown, Eye, UserPlus, AlertTriangle, Trash2, Edit2, Clock, LoaderCircle, CheckCircle, DatabaseZap, ServerCrash } from 'lucide-react';
 import AppHeader from '@/components/shared/AppHeader';
 import AuthCheck from '@/components/shared/AuthCheck';
@@ -47,10 +48,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import DailySummaryCard from '@/components/admin/DailySummaryCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { processTimesheetData } from '@/lib/timesheet-processor';
 import { Separator } from '@/components/ui/separator';
-import { getTimesheetForUserByMonth } from '@/lib/firebase-admin';
-
 
 const MONTHS = [
     { value: 0, name: 'January' }, { value: 1, name: 'February' }, { value: 2, name: 'March' },
@@ -115,13 +113,6 @@ export default function AdminPage() {
     const [isCleaningLogs, setIsCleaningLogs] = useState(false);
     const [isResettingData, setIsResettingData] = useState(false);
 
-    // State for timesheet viewer
-    const [selectedTimesheetUser, setSelectedTimesheetUser] = useState<string>('');
-    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-    const [processedData, setProcessedData] = useState<ProcessedDay[]>([]);
-    const [isTimesheetLoading, setIsTimesheetLoading] = useState(false);
-    const YEARS = getYears();
     
     // State for overbreak filters
     const [filteredOverbreaks, setFilteredOverbreaks] = useState<ActivityLog[]>([]);
@@ -444,55 +435,6 @@ export default function AdminPage() {
         setIsResettingData(false);
     }
 
-    const handleFetchTimesheet = async () => {
-        const user = users.find(u => u.uid === selectedTimesheetUser);
-        if (!user) {
-            toast({ title: "Error", description: "Please select an employee.", variant: 'destructive' });
-            return;
-        }
-
-        setIsTimesheetLoading(true);
-        try {
-            const result = await getTimesheetForUserByMonth(user.uid, selectedYear, selectedMonth);
-
-            if (!result.success) {
-                toast({ title: "Error", description: result.message, variant: 'destructive' });
-                setProcessedData([]);
-                setIsTimesheetLoading(false);
-                return;
-            }
-            
-            const rawEntries = result.timesheet || [];
-
-            if (rawEntries.length === 0) {
-                toast({ title: "No Data", description: `No timesheet entries found for ${user.name} for the selected month.` });
-                setProcessedData([]);
-                setIsTimesheetLoading(false);
-                return;
-            }
-            
-            const shift = user.shift || 'none';
-            let shiftDetails = {};
-            if (shift === 'custom') {
-                shiftDetails = { shiftStart: "09:00", shiftEnd: "17:00" };
-            }
-
-            const clientResult = processTimesheetData({
-                timesheetEntries: rawEntries,
-                shift: shift,
-                ...shiftDetails,
-            });
-
-            setProcessedData(clientResult.processedDays.reverse());
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            toast({ title: "Error", description: `Failed to process timesheet: ${errorMessage}`, variant: 'destructive' });
-        } finally {
-            setIsTimesheetLoading(false);
-        }
-    };
-
 
     if (isLoadingData) {
         return (
@@ -557,99 +499,6 @@ export default function AdminPage() {
                     <Button onClick={handlePreviewData}><Eye className="mr-2 h-4 w-4" /> Preview Data</Button>
                 </div>
             </Card>
-
-            <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
-                <CardHeader className="!p-0 !pb-6">
-                    <CardTitle className="text-xl font-semibold text-card-foreground font-headline flex items-center">
-                        <Clock className="mr-2 h-5 w-5 text-primary" /> Employee Timesheet Viewer
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="!p-0">
-                    <div className="flex flex-col gap-4 md:flex-row">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 gap-4 flex-grow">
-                            <div>
-                                <Label htmlFor="timesheet-employee">Employee</Label>
-                                <Select value={selectedTimesheetUser} onValueChange={setSelectedTimesheetUser}>
-                                    <SelectTrigger id="timesheet-employee"><SelectValue placeholder="Select Employee" /></SelectTrigger>
-                                    <SelectContent>
-                                        {users.filter(u => u.role !== 'Administrator').map(u => <SelectItem key={u.uid} value={u.uid}>{u.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="timesheet-month">Month</Label>
-                                <Select value={String(selectedMonth)} onValueChange={(val) => setSelectedMonth(Number(val))}>
-                                    <SelectTrigger id="timesheet-month"><SelectValue placeholder="Select Month" /></SelectTrigger>
-                                    <SelectContent>
-                                        {MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="timesheet-year">Year</Label>
-                                 <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
-                                    <SelectTrigger id="timesheet-year"><SelectValue placeholder="Select Year" /></SelectTrigger>
-                                    <SelectContent>
-                                        {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div className="md:self-end">
-                            <Button onClick={handleFetchTimesheet} disabled={isTimesheetLoading} className="w-full">
-                                {isTimesheetLoading ? <LoaderCircle className="animate-spin" /> : 'View Timesheet'}
-                            </Button>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-             {processedData.length > 0 && (
-                <Card className="bg-card/95 backdrop-blur-sm card-shadow rounded-2xl p-6 mb-8">
-                     <CardTitle className="text-xl font-semibold text-card-foreground mb-6 font-headline">
-                        Timesheet for {users.find(u => u.uid === selectedTimesheetUser)?.name}
-                     </CardTitle>
-                     <ScrollArea className="h-80">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Clock In</TableHead>
-                                    <TableHead>Clock Out</TableHead>
-                                    <TableHead>Late</TableHead>
-                                    <TableHead>Undertime</TableHead>
-                                    <TableHead>Regular</TableHead>
-                                    <TableHead>OT</TableHead>
-                                    <TableHead>Total</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isTimesheetLoading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} className="text-center h-24">
-                                            <LoaderCircle className="mx-auto h-8 w-8 animate-spin text-primary" />
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    processedData.map((day) => (
-                                        <TableRow key={day.date}>
-                                            <TableCell>{day.date}</TableCell>
-                                            <TableCell>{day.clockIn}</TableCell>
-                                            <TableCell>{day.clockOut}</TableCell>
-                                            <TableCell className={day.late !== '00:00' ? 'text-orange-500' : ''}>{day.late}</TableCell>
-                                            <TableCell className={day.undertime !== '00:00' ? 'text-red-500' : ''}>{day.undertime}</TableCell>
-                                            <TableCell>{day.regularHours}</TableCell>
-                                            <TableCell className={day.otHours !== '00:00' ? 'text-green-500' : ''}>{day.otHours}</TableCell>
-                                            <TableCell className="font-bold">{day.totalHours}</TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                     </ScrollArea>
-                </Card>
-             )}
-
 
             <div className="grid grid-cols-1 gap-6 mb-8">
                 <UserManagementCard
